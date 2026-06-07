@@ -1,0 +1,122 @@
+{
+  "project_info": {
+    "project_number": "704257001092",
+    "project_id": "imobareld",
+    "storage_bucket": "imobareld.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:704257001092:android:2fabfa8eac5855e88324d1",
+        "android_client_info": {
+          "package_name": "bf.imobareld.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "704257001092-b59j5ue1j95j63991ut6uj4tv9kjpp9q.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "bf.imobareld.app",
+            "certificate_hash": "9154cb277caca24a6170d01a2785245299334873"
+          }
+        },
+        {
+          "client_id": "704257001092-phmeuag628lbb3v1g291agsr5uefauhn.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "bf.imobareld.app",
+            "certificate_hash": "1daa1a26703d9d89e5aadae1b4e652f9139e477f"
+          }
+        },
+        {
+          "client_id": "704257001092-k5qgf3cv9k7qdhkoenmrv6goelkl5t0r.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBxK9W30o07Jz5KJGCbl51tuyexo8ihpUI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "704257001092-k5qgf3cv9k7qdhkoenmrv6goelkl5t0r.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "704257001092-mlg6mv68r3jfg456t4ecjqp7gvihji7c.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.imobareld"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:704257001092:android:d6222908c3e2bc038324d1",
+        "android_client_info": {
+          "package_name": "com.example.imobareld"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "704257001092-5kvqn4ldsr9fqu1a21tfmj4rb9eid9eg.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.imobareld",
+            "certificate_hash": "4444bbe9fb5d4f4e648d8d02d93ff9894ce3a6c7"
+          }
+        },
+        {
+          "client_id": "704257001092-feed6mo4c5rhmfpgsqlf5h520gnid01q.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.imobareld",
+            "certificate_hash": "9154cb277caca24a6170d01a2785245299334873"
+          }
+        },
+        {
+          "client_id": "704257001092-jop8kvs3d2qmrp5lh1oavirh49vpf6ls.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.imobareld",
+            "certificate_hash": "1daa1a26703d9d89e5aadae1b4e652f9139e477f"
+          }
+        },
+        {
+          "client_id": "704257001092-k5qgf3cv9k7qdhkoenmrv6goelkl5t0r.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBxK9W30o07Jz5KJGCbl51tuyexo8ihpUI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "704257001092-k5qgf3cv9k7qdhkoenmrv6goelkl5t0r.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "704257001092-mlg6mv68r3jfg456t4ecjqp7gvihji7c.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.imobareld"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

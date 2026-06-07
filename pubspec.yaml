@@ -1,0 +1,91 @@
+name: imobareld
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.1+2
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  flutter_native_splash: ^2.4.7
+  lottie: ^3.3.2
+  google_mobile_ads: ^5.1.0
+  supabase_flutter: ^2.12.2
+
+  firebase_core: ^3.8.1
+
+  google_sign_in: ^6.2.4
+
+  provider: ^6.1.2
+  image_cropper: ^11.0.0
+  permission_handler: ^12.0.1
+  geolocator: ^14.0.2
+  image_picker: ^1.2.1
+  flutter_image_compress: ^2.3.0
+
+  google_maps_flutter: ^2.14.0
+  google_maps_flutter_android: ^2.16.4
+  google_maps_flutter_platform_interface: ^2.10.0
+  flutter_local_notifications: ^19.5.0
+  firebase_messaging: ^15.2.10
+  video_player: ^2.10.1
+  chewie: ^1.13.0
+  video_compress: ^3.1.4
+  path_provider: ^2.1.5
+  url_launcher: ^6.3.2
+  shared_preferences: ^2.5.4
+  sqflite: ^2.3.0
+  connectivity_plus: ^5.0.2
+  path: ^1.8.3
+  shimmer: ^3.0.0
+  font_awesome_flutter: ^10.7.0
+  cinetpay: ^1.0.8
+  universal_io: ^2.3.1
+  http: ^1.6.0
+  web_socket_channel: ^3.0.3
+  cached_network_image: ^3.4.1
+  flutter_cache_manager: ^3.4.1
+  share_plus: ^12.0.2
+  app_links: ^6.4.1
+  timezone: ^0.10.1
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^5.0.0
+  lints: ^5.1.1
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: true
+  image_path: "assets/images/logo.png"
+  ios: true
+  remove_alpha_ios: true
+  background_color: "#000000"
+  min_sdk_android: 21
+  web:
+    generate: true
+    image_path: "assets/images/logo.png"
+    background_color: "#000000"
+    theme_color: "#000000"
+
+flutter_native_splash:
+  color: "#000000"
+  image: "assets/images/logo.png"
+  android_12:
+    image: "assets/images/logo.png"
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/icons/
+    - assets/splash/

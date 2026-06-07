@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.imobareld",
+      "sha256_cert_fingerprints": [
+        "B1:5A:54:BB:6C:F3:0D:F6:8F:64:DB:CA:7B:78:09:16:5B:EC:90:AD:A4:81:22:3A:9C:DD:BD:32:DC:47:56:49"
+      ]
+    }
+  }
+]

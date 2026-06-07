@@ -1,0 +1,50 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "imobareld",
+          "appId": "1:704257001092:android:d6222908c3e2bc038324d1",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "imobareld",
+          "configurations": {
+            "android": "1:704257001092:android:d6222908c3e2bc038324d1",
+            "ios": "1:704257001092:ios:35a32c6b50d0cfae8324d1",
+            "macos": "1:704257001092:ios:35a32c6b50d0cfae8324d1",
+            "web": "1:704257001092:web:aeaefc19f6aa9adc8324d1"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log"
+      ]
+    }
+  ],
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}
