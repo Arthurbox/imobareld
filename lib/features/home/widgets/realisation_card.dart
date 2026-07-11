@@ -44,7 +44,7 @@ class RealisationCard extends StatelessWidget {
         }
       },
       child: Container(
-        width: kIsWeb ? 550 : MediaQuery.of(context).size.width * 0.85,
+        width: MediaQuery.of(context).size.width > 600 ? 350 : MediaQuery.of(context).size.width * 0.85,
         margin: const EdgeInsets.only(right: 16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),

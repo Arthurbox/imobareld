@@ -67,7 +67,7 @@ class _BannerCarouselState extends State<BannerCarousel> {
   Widget build(BuildContext context) {
     if (widget.isLoading) {
       return Container(
-        height: kIsWeb ? 380 : 220,
+        height: 220,
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: Colors.grey[200],
@@ -85,7 +85,7 @@ class _BannerCarouselState extends State<BannerCarousel> {
         child: Column(
           children: [
             SizedBox(
-              height: kIsWeb ? 380 : 220,
+              height: 220,
               child: PageView.builder(
                 controller: _pageController,
                 onPageChanged: (index) {

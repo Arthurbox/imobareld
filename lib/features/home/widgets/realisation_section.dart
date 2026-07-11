@@ -42,9 +42,9 @@ class RealisationSection extends StatelessWidget {
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting &&
                     !snapshot.hasData) {
-                  return SizedBox(
-                    height: kIsWeb ? 380 : 250,
-                    child: const Center(child: CircularProgressIndicator()),
+                  return const SizedBox(
+                    height: 250,
+                    child: Center(child: CircularProgressIndicator()),
                   );
                 }
 
@@ -60,7 +60,7 @@ class RealisationSection extends StatelessWidget {
                 }
 
                 return SizedBox(
-                  height: kIsWeb ? 380 : 250, // Hauteur de la carte horizontale
+                  height: 250, // Hauteur de la carte horizontale
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(
