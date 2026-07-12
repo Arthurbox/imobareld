@@ -815,79 +815,124 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(height: 24),
 
                   // ========================================
-                  // BOUTON "CONTINUER AVEC GOOGLE"
+                  // BOUTONS "CONTINUER AVEC..."
                   // ========================================
                   Consumer<AuthController>(
                     builder: (context, authController, _) {
-                      return SizedBox(
-                        width: double.infinity,
-                        height: 56,
-                        child: OutlinedButton.icon(
-                          onPressed: authController.isLoading
-                              ? null
-                              : () async {
-                                  final navigator = Navigator.of(context);
-                                  final messenger = ScaffoldMessenger.of(context);
+                      return Row(
+                        children: [
+                          // Bouton Google
+                          Expanded(
+                            child: SizedBox(
+                              height: 56,
+                              child: OutlinedButton.icon(
+                                onPressed: authController.isLoading
+                                    ? null
+                                    : () async {
+                                        final navigator = Navigator.of(context);
+                                        final messenger = ScaffoldMessenger.of(context);
+                                        
+                                        setState(() {
+                                          _showTermsError = !_acceptTerms;
+                                          _showPrivacyError = !_acceptPrivacy;
+                                        });
+                                        if (!_acceptTerms || !_acceptPrivacy) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(
+                                              content: Text('Veuillez accepter les CGU et la Politique de Confidentialité'),
+                                              backgroundColor: AppColors.error,
+                                            ),
+                                          );
+                                          return;
+                                        }
 
-                                  // 0. Vérifier l'acceptation
-                                  setState(() {
-                                    _showTermsError = !_acceptTerms;
-                                    _showPrivacyError = !_acceptPrivacy;
-                                  });
-                                  if (!_acceptTerms || !_acceptPrivacy) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Veuillez accepter les CGU et la Politique de Confidentialité'),
-                                        backgroundColor: AppColors.error,
-                                      ),
-                                    );
-                                    return;
-                                  }
-
-                                  // Connexion avec Google en utilisant le type d'utilisateur sélectionné
-                                  final success = await authController.signInWithGoogle(
-                                    userType: _selectedUserType,
-                                  );
-                                  
-                                  if (!mounted) return;
-
-                                  if (success) {
-                                    // Utiliser la redirection intelligente centralisée
-                                    navigator.pushReplacement(
-                                      MaterialPageRoute(builder: (_) => authController.getNextScreen()),
-                                    );
-                                  } else {
-                                    if (authController.errorMessage != null) {
-                                      messenger.showSnackBar(
-                                        SnackBar(
-                                          content: Text(authController.errorMessage!),
-                                          backgroundColor: AppColors.error,
-                                        ),
-                                      );
-                                    }
-                                  }
-                                },
-                          icon: Image.asset(
-                            'assets/images/Google__G__logo.svg.webp',
-                            height: 24,
-                            width: 24,
-                          ),
-                          label: Text(
-                            'Continuer avec Google',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Theme.of(context).brightness == Brightness.dark ? Colors.white : AppColors.textDark,
+                                        final success = await authController.signInWithGoogle(userType: _selectedUserType);
+                                        if (!mounted) return;
+                                        
+                                        if (success) {
+                                          navigator.pushReplacement(MaterialPageRoute(builder: (_) => authController.getNextScreen()));
+                                        } else if (authController.errorMessage != null) {
+                                          messenger.showSnackBar(SnackBar(content: Text(authController.errorMessage!), backgroundColor: AppColors.error));
+                                        }
+                                      },
+                                icon: Image.asset('assets/images/Google__G__logo.svg.webp', height: 24, width: 24),
+                                label: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    'Google',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Theme.of(context).brightness == Brightness.dark ? Colors.white : AppColors.textDark,
+                                    ),
+                                  ),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                  side: BorderSide(color: Theme.of(context).dividerColor, width: 2),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                                  backgroundColor: Theme.of(context).cardColor,
+                                ),
+                              ),
                             ),
                           ),
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(color: Theme.of(context).dividerColor, width: 2),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                          const SizedBox(width: 16),
+                          // Bouton Facebook
+                          Expanded(
+                            child: SizedBox(
+                              height: 56,
+                              child: ElevatedButton.icon(
+                                onPressed: authController.isLoading
+                                    ? null
+                                    : () async {
+                                        final navigator = Navigator.of(context);
+                                        final messenger = ScaffoldMessenger.of(context);
+                                        
+                                        setState(() {
+                                          _showTermsError = !_acceptTerms;
+                                          _showPrivacyError = !_acceptPrivacy;
+                                        });
+                                        if (!_acceptTerms || !_acceptPrivacy) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(
+                                              content: Text('Veuillez accepter les CGU et la Politique de Confidentialité'),
+                                              backgroundColor: AppColors.error,
+                                            ),
+                                          );
+                                          return;
+                                        }
+
+                                        final success = await authController.signInWithFacebook(userType: _selectedUserType);
+                                        if (!mounted) return;
+                                        
+                                        if (success) {
+                                          navigator.pushReplacement(MaterialPageRoute(builder: (_) => authController.getNextScreen()));
+                                        } else if (authController.errorMessage != null) {
+                                          messenger.showSnackBar(SnackBar(content: Text(authController.errorMessage!), backgroundColor: AppColors.error));
+                                        }
+                                      },
+                                icon: const Icon(Icons.facebook, color: Colors.white, size: 28),
+                                label: const FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    'Facebook',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                  backgroundColor: const Color(0xFF1877F2), // Facebook Blue
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                                  elevation: 0,
+                                ),
+                              ),
                             ),
-                            backgroundColor: Theme.of(context).cardColor,
                           ),
-                        ),
+                        ],
                       );
                     },
                   ),

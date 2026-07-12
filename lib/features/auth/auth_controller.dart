@@ -591,6 +591,47 @@ class AuthController extends ChangeNotifier {
     }
   }
 
+  /// Authentification Facebook via Supabase
+  Future<bool> signInWithFacebook({String userType = 'locataire'}) async {
+    try {
+      _isLoading = true;
+      _errorMessage = null;
+      notifyListeners();
+
+      // Sauvegarder le userType souhaité pour le récupérer après redirection (Web)
+      if (kIsWeb) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('pending_user_type', userType);
+      }
+
+      // Supabase gère le flux OAuth Facebook
+      await supabaseService.client.auth.signInWithOAuth(
+        sb.OAuthProvider.facebook,
+        redirectTo: kIsWeb
+            ? (kDebugMode
+                ? 'http://localhost:5000'
+                : 'https://imobareld.web.app')
+            : 'imobareldapp://',
+        authScreenLaunchMode: sb.LaunchMode.platformDefault,
+      );
+
+      return true;
+      
+    } on sb.AuthException catch (e) {
+      debugPrint('🚨 Erreur Facebook Auth Supabase: $e');
+      _isLoading = false;
+      _errorMessage = "Erreur d'authentification: ${e.message}";
+      notifyListeners();
+      return false;
+    } catch (e) {
+      debugPrint('🚨 Erreur Facebook Auth: $e');
+      _isLoading = false;
+      _errorMessage = "Une erreur est survenue lors de la connexion avec Facebook.";
+      notifyListeners();
+      return false;
+    }
+  }
+
   /// Méthode interne pour synchroniser manuellement un profil (utile pour Google/Apple login)
   Future<void> _manualProfileSync({
     required String id, 

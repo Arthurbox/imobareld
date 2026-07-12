@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:imobareld/core/constants/app_colors.dart';
 import 'package:imobareld/features/admin/admin_controller.dart';
 import 'package:imobareld/features/admin/views/admin_boosted_list_view.dart';
+import 'package:imobareld/features/admin/views/admin_chat_manager_view.dart';
 
 // 1. VUE STATISTIQUES (En temps réel simulé par rafraîchissement périodique)
 class AdminStatsView extends StatelessWidget {
@@ -11,6 +12,7 @@ class AdminStatsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final adminCtrl = Provider.of<AdminController>(context, listen: false);
+    final theme = Theme.of(context);
     
     return StreamBuilder<Map<String, int>>(
       stream: adminCtrl.statsStream,
@@ -61,6 +63,29 @@ class AdminStatsView extends StatelessWidget {
                     stats['totalBoostedProperties']?.toString() ?? '0',
                     Icons.rocket_launch,
                     Colors.orangeAccent,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                // --- NOUVEL ONGLET CHAT ---
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminChatManagerView()));
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: theme.cardColor,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.redAccent),
+                    ),
+                    child: Column(
+                      children: [
+                        const Icon(Icons.forum, color: Colors.redAccent, size: 30),
+                        const SizedBox(height: 10),
+                        Text('Gestion des Chats', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: theme.textTheme.titleLarge?.color)),
+                        Text('Gérer et supprimer les discussions', style: TextStyle(color: theme.textTheme.bodySmall?.color, fontSize: 12), textAlign: TextAlign.center),
+                      ],
+                    ),
                   ),
                 ),
               ],
