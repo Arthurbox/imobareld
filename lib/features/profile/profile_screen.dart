@@ -325,6 +325,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ListTile(
                           leading: const Icon(Icons.card_membership, color: Colors.teal),
                           title: Text('Abonnement', style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color)),
+                          subtitle: user.subscriptionStatus == 'trial' && user.trialEndsAt != null && user.trialEndsAt!.isAfter(DateTime.now())
+                              ? const Text('Essai gratuit en cours', style: TextStyle(color: Colors.green, fontSize: 12))
+                              : null,
                           trailing: const Icon(Icons.chevron_right),
                           onTap: () {
                             Navigator.push(

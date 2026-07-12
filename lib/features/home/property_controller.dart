@@ -7,6 +7,7 @@ import 'package:imobareld/models/comment_model.dart';
 import 'package:imobareld/models/review_model.dart';
 import 'package:imobareld/core/services/notification_service.dart';
 import 'package:imobareld/core/services/database_helper.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:imobareld/core/services/supabase_service.dart';
 import 'package:imobareld/core/services/connectivity_service.dart';
 
@@ -90,7 +91,16 @@ class PropertyController extends ChangeNotifier {
       if (userId == null) return [];
 
       for (var image in images) {
-        final bytes = await image.readAsBytes();
+        Uint8List bytes;
+        if (kIsWeb) {
+          bytes = await image.readAsBytes();
+        } else {
+          final compressed = await FlutterImageCompress.compressWithFile(
+            image.path,
+            quality: 85, // 85% pour garantir une excellente qualité visuelle
+          );
+          bytes = compressed ?? await image.readAsBytes();
+        }
         final extension = p.extension(image.path).toLowerCase();
         final fileName = 'prop_${DateTime.now().microsecondsSinceEpoch}$extension';
         final path = 'properties/$userId/$fileName';

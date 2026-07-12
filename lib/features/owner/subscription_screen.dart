@@ -50,12 +50,17 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final auth = Provider.of<AuthController>(context);
+    final user = auth.currentUser;
     final totalPrice = _plans.firstWhere((p) => p['months'] == _selectedMonths)['price'] as int;
+    
+    final bool isTrial = user?.subscriptionStatus == 'trial' && user?.trialEndsAt != null && user!.trialEndsAt!.isAfter(DateTime.now());
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text('Abonnement Propriétaire', style: TextStyle(color: theme.primaryColor)),
+        title: Text('Abonnement', style: TextStyle(color: theme.primaryColor)),
+        centerTitle: true,
         backgroundColor: theme.appBarTheme.backgroundColor,
         elevation: 0,
         iconTheme: IconThemeData(color: theme.primaryColor),
@@ -71,6 +76,30 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   children: [
                     const Icon(Icons.star, size: 64, color: Colors.orange),
                     const SizedBox(height: 16),
+                    if (isTrial)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 24),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.green),
+                        ),
+                        child: Column(
+                          children: [
+                            const Text(
+                              '🎉 Cadeau de bienvenue !',
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Vous bénéficiez de 6 mois d\'essai gratuit. Votre période d\'essai se termine le ${user!.trialEndsAt!.day.toString().padLeft(2, '0')}/${user.trialEndsAt!.month.toString().padLeft(2, '0')}/${user.trialEndsAt!.year}.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: theme.textTheme.bodyMedium?.color, fontSize: 14),
+                            ),
+                          ],
+                        ),
+                      ),
                     Text(
                       'Débloquez tout le potentiel de vos annonces',
                       textAlign: TextAlign.center,
@@ -78,7 +107,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Un abonnement actif vous permet de gérer vos biens, accepter des réservations et communiquer avec les locataires.',
+                      'Un abonnement actif vous permet de gérer vos biens, accepter des réservations et communiquer avec les locataires.\n\n🎁 N.B : Tous les propriétaires bénéficient de 6 mois d\'essai gratuit à l\'inscription !',
                       textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 16, color: theme.textTheme.bodyMedium?.color),
                     ),

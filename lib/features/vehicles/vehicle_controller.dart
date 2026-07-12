@@ -6,6 +6,7 @@ import 'package:imobareld/core/services/database_helper.dart';
 import 'package:imobareld/core/services/connectivity_service.dart';
 import 'package:imobareld/core/services/supabase_service.dart';
 import 'package:video_compress/video_compress.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:path/path.dart' as p;
 import 'package:image_picker/image_picker.dart';
 
@@ -47,7 +48,16 @@ class VehicleController extends ChangeNotifier {
       if (userId == null) return [];
 
       for (var image in images) {
-        final bytes = await image.readAsBytes();
+        Uint8List bytes;
+        if (kIsWeb) {
+          bytes = await image.readAsBytes();
+        } else {
+          final compressed = await FlutterImageCompress.compressWithFile(
+            image.path,
+            quality: 85, // 85% pour garantir une excellente qualité visuelle
+          );
+          bytes = compressed ?? await image.readAsBytes();
+        }
         final extension = p.extension(image.path).toLowerCase();
         final fileName = 'veh_${DateTime.now().microsecondsSinceEpoch}$extension';
         final path = 'vehicles/$userId/$fileName';
