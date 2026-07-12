@@ -21,6 +21,7 @@ import 'package:imobareld/features/owner/owner_dashboard.dart';
 import 'package:imobareld/features/home/announcement_screen.dart';
 import 'package:imobareld/features/profile/profile_screen.dart';
 import 'package:imobareld/features/profile/my_boosts_screen.dart';
+import 'package:imobareld/features/owner/subscription_screen.dart';
 import 'package:imobareld/features/admin/admin_dashboard.dart';
 import 'package:imobareld/features/home/announcement_controller.dart';
 import 'package:imobareld/models/announcement_model.dart';
@@ -258,6 +259,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   _buildDrawerItem(Icons.flash_on, 'Mes Boostes', () {
                     Navigator.pop(context);
                     Navigator.push(context, MaterialPageRoute(builder: (_) => const MyBoostsScreen()));
+                  }),
+                if ((user?.isOwner ?? false) || (user?.isAdmin ?? false))
+                  _buildDrawerItem(Icons.card_membership, 'Abonnement', () {
+                    Navigator.pop(context);
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
                   }),
 
                 _buildDrawerItem(Icons.directions_car_outlined, 'Location de véhicule', () {
