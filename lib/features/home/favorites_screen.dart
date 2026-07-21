@@ -4,6 +4,7 @@ import 'package:imobareld/features/home/property_controller.dart';
 import 'package:imobareld/models/property_model.dart';
 import 'package:imobareld/core/widgets/property_card.dart';
 import 'package:imobareld/core/widgets/responsive_layout.dart';
+import 'package:imobareld/core/widgets/skeleton_list.dart';
 
 /// Écran des propriétés favorites.
 /// Lit les IDs favoris depuis AuthController (mis à jour en temps réel)
@@ -31,7 +32,7 @@ class FavoritesScreen extends StatelessWidget {
           future: propertyController.getFavoriteProperties(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
+              return const SkeletonList(itemCount: 4, itemHeight: 260);
             }
     
             if (snapshot.hasError) {

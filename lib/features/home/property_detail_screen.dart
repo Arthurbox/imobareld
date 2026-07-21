@@ -21,6 +21,7 @@ import 'package:imobareld/core/widgets/full_screen_image_viewer.dart';
 import 'package:imobareld/core/widgets/banner_ad_widget.dart';
 import 'package:imobareld/core/utils/share_utils.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:imobareld/core/widgets/skeleton_list.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
   final PropertyModel property;
@@ -1409,7 +1410,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     return FutureBuilder<List<ReviewModel>>(
       future: _reviewsFuture,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+        if (snapshot.connectionState == ConnectionState.waiting) return const SkeletonList(itemCount: 3, itemHeight: 80);
         if (snapshot.hasError) {
           debugPrint('Erreur d\'affichage des avis: ${snapshot.error}');
           return Text('Erreur: ${snapshot.error}');

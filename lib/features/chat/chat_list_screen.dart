@@ -5,6 +5,7 @@ import 'package:imobareld/core/constants/app_colors.dart';
 import 'package:imobareld/features/auth/auth_controller.dart';
 import 'package:imobareld/features/chat/chat_controller.dart';
 import 'package:imobareld/features/chat/chat_detail_screen.dart';
+import 'package:imobareld/core/widgets/skeleton_list.dart';
 
 class ChatListScreen extends StatelessWidget {
   const ChatListScreen({super.key});
@@ -56,7 +57,7 @@ class _ChatListContentState extends State<ChatListContent> {
         future: chatController.getConversations(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const SkeletonList(itemCount: 8, itemHeight: 80);
           }
           final conversations = snapshot.data ?? [];
 

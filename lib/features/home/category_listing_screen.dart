@@ -6,6 +6,7 @@ import 'package:imobareld/core/widgets/shimmer_loading.dart';
 import 'package:imobareld/core/widgets/property_card.dart';
 import 'package:imobareld/features/auth/auth_controller.dart' as import_auth;
 import 'package:imobareld/models/comment_model.dart';
+import 'package:imobareld/core/widgets/skeleton_list.dart';
 
 class CategoryListingScreen extends StatefulWidget {
   final String category;
@@ -129,7 +130,7 @@ class _CategoryListingScreenState extends State<CategoryListingScreen> {
                 child: StreamBuilder<List<CommentModel>>(
                   stream: Provider.of<PropertyController>(context, listen: false).getCommentsStream(property.id!),
                   builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+                    if (snapshot.connectionState == ConnectionState.waiting) return const SkeletonList(itemCount: 4, itemHeight: 70);
                     if (snapshot.hasError) return Center(child: Text('Erreur: ${snapshot.error}'));
                     final comments = snapshot.data ?? [];
                     if (comments.isEmpty) return const Center(child: Text('Aucun commentaire pour le moment'));

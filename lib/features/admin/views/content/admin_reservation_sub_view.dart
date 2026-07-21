@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:imobareld/features/vehicles/rental_controller.dart';
 import 'package:imobareld/models/reservation_model.dart';
+import 'package:imobareld/core/widgets/skeleton_list.dart';
 
 // ── Sous-vue Réservation (Véhicules) ──────────────────────────────────────────
 class AdminReservationSubView extends StatelessWidget {
@@ -15,7 +16,7 @@ class AdminReservationSubView extends StatelessWidget {
     return StreamBuilder<List<ReservationModel>>(
       stream: rentalCtrl.allReservationsStream,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+        if (snapshot.connectionState == ConnectionState.waiting) return const SkeletonList(itemCount: 4, itemHeight: 80);
 
         final reservations = snapshot.data ?? [];
         

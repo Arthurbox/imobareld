@@ -20,6 +20,7 @@ import 'package:imobareld/features/vehicles/vehicle_detail_screen.dart';
 import 'package:imobareld/features/owner/boost_plans_screen.dart';
 import 'package:imobareld/features/owner/subscription_screen.dart';
 import 'package:imobareld/core/widgets/cached_image.dart';
+import 'package:imobareld/core/widgets/skeleton_list.dart';
 
 
 class OwnerDashboard extends StatefulWidget {
@@ -155,7 +156,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
         stream: propertyController.getPropertiesByOwnerStream(userId),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const SkeletonList(itemCount: 4, itemHeight: 120);
           }
 
           if (snapshot.hasError) {
@@ -292,10 +293,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                     }
 
                     if (vehicleSnapshot.connectionState == ConnectionState.waiting) {
-                      return const SliverToBoxAdapter(child: Center(child: Padding(
-                        padding: EdgeInsets.all(20.0),
-                        child: CircularProgressIndicator(),
-                      )));
+                      return const SliverToBoxAdapter(child: SkeletonList(itemCount: 2, itemHeight: 120));
                     }
                     final vehicles = vehicleSnapshot.data ?? [];
 
@@ -675,7 +673,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
               }
 
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
+                return const SkeletonList(itemCount: 4, itemHeight: 120);
               }
 
               final reservations = snapshot.data ?? [];

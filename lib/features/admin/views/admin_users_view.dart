@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:imobareld/features/admin/admin_controller.dart';
 import 'package:imobareld/models/user_model.dart';
+import 'package:imobareld/core/widgets/skeleton_list.dart';
 
 // 2. VUE UTILISATEURS
 class AdminUsersView extends StatefulWidget {
@@ -138,7 +139,7 @@ class _AdminUsersViewState extends State<AdminUsersView> {
               stream: adminCtrl.allUsersStream(query: _searchQuery),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const SkeletonList(itemCount: 8, itemHeight: 60);
                 }
                 if (snapshot.hasError) {
                   return Center(child: Text('Erreur: ${snapshot.error}', style: const TextStyle(color: Colors.red)));

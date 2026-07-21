@@ -5,6 +5,7 @@ import 'package:imobareld/features/home/widgets/notification_tile.dart';
 import 'package:imobareld/features/auth/auth_controller.dart';
 import 'package:imobareld/features/home/property_detail_screen.dart';
 import 'package:imobareld/models/property_model.dart';
+import 'package:imobareld/core/widgets/skeleton_list.dart';
 
 class NewPropertiesScreen extends StatelessWidget {
   const NewPropertiesScreen({super.key});
@@ -42,7 +43,7 @@ class NewPropertiesScreen extends StatelessWidget {
         future: propertyCtrl.getProperties(limit: 50),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const SkeletonList(itemCount: 8, itemHeight: 100);
           }
           
           if (snapshot.hasError) {

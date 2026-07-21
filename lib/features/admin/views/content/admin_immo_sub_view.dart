@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:imobareld/core/constants/app_colors.dart';
 import 'package:imobareld/features/admin/admin_controller.dart';
+import 'package:imobareld/core/widgets/skeleton_list.dart';
 import 'package:imobareld/features/home/property_controller.dart';
 import 'package:imobareld/features/home/property_detail_screen.dart';
 import 'package:imobareld/models/property_model.dart';
@@ -104,7 +105,7 @@ class _AdminImmoSubViewState extends State<AdminImmoSubView> {
       body: StreamBuilder<List<PropertyModel>>(
         stream: propertyController.propertiesByCityStream(widget.city),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+          if (snapshot.connectionState == ConnectionState.waiting) return const SkeletonList(itemCount: 4, itemHeight: 120);
 
           var properties = snapshot.data ?? [];
 
