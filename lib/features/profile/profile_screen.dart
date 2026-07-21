@@ -13,6 +13,7 @@ import 'package:imobareld/core/services/accessibility_settings.dart';
 import 'package:imobareld/features/settings/about_us_screen.dart';
 import 'package:imobareld/features/settings/contact_us_screen.dart';
 import 'package:imobareld/features/settings/legal_documents_screen.dart';
+import 'package:imobareld/features/settings/faq_screen.dart';
 import 'package:imobareld/features/profile/my_boosts_screen.dart';
 import 'package:imobareld/features/owner/subscription_screen.dart';
 
@@ -354,6 +355,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(builder: (_) => const ContactUsScreen()),
+                          );
+                        },
+                      ),
+                      const Divider(),
+                      ListTile(
+                        leading: Icon(Icons.question_answer_outlined, color: AppColors.primaryBlue),
+                        title: Text('FAQ', style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color)),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const FaqScreen()),
                           );
                         },
                       ),

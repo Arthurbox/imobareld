@@ -69,9 +69,9 @@ void main() async {
       ),
       Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform),
     ]).timeout(
-      const Duration(seconds: 8),
+      const Duration(seconds: 4),
       onTimeout: () {
-        debugPrint('⏳ Timeout initialisation Supabase/Firebase (8s)');
+        debugPrint('⏳ Timeout initialisation Supabase/Firebase (4s)');
         return [];
       },
     );
@@ -92,9 +92,9 @@ void main() async {
         (e) => debugPrint('Err Settings: $e'),
       ),
     ]).timeout(
-      const Duration(seconds: 5),
+      const Duration(seconds: 2),
       onTimeout: () {
-        debugPrint('⏳ Timeout services secondaires (5s)');
+        debugPrint('⏳ Timeout services secondaires (2s)');
         return [];
       },
     );

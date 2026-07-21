@@ -39,7 +39,7 @@ class ConnectivityService extends ChangeNotifier {
     try {
       final ConnectivityResult result = await _connectivity
           .checkConnectivity()
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 2));
       _updateConnectionStatus([result]);
     } catch (e) {
       debugPrint('❌ Erreur lors de la vérification de la connectivité: $e');
