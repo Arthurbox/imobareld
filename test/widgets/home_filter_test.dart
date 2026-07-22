@@ -62,8 +62,7 @@ void main() {
   testWidgets('Clicking Filtre on Home navigates to SearchScreen', (WidgetTester tester) async {
     // Suppress errors related to AdHelper and NotificationService
     FlutterError.onError = (details) {
-      if (details.exception.toString().contains('AdHelper') || 
-          details.exception.toString().contains('NotificationService')) {
+      if (details.exception.toString().contains('NotificationService')) {
         return;
       }
       FlutterError.presentError(details);

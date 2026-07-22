@@ -7,8 +7,6 @@ import 'package:imobareld/features/auth/auth_controller.dart';
 import 'package:imobareld/features/home/property_controller.dart';
 import 'package:imobareld/models/property_model.dart';
 import 'package:imobareld/core/utils/amenity_utils.dart';
-import 'package:imobareld/core/services/ad_helper.dart';
-import 'package:imobareld/core/widgets/banner_ad_widget.dart';
 import 'package:imobareld/core/constants/bf_locations.dart';
 import 'package:imobareld/features/home/location_picker_screen.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -312,8 +310,6 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
       }
 
       if (success) {
-        if (!mounted) return;
-        await AdHelper.showInterstitialAd();
         if (!mounted) return;
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -733,8 +729,6 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 32),
-                      const Center(child: BannerAdWidget()),
                       const SizedBox(height: 16),
                       SizedBox(
                         width: double.infinity,

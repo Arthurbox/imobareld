@@ -5,7 +5,6 @@ import 'package:imobareld/core/widgets/cached_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:imobareld/core/constants/app_colors.dart';
-import 'package:imobareld/core/services/ad_helper.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:imobareld/features/auth/auth_controller.dart';
@@ -38,7 +37,6 @@ import 'package:imobareld/features/home/widgets/banner_carousel.dart';
 import 'package:imobareld/features/home/widgets/category_scroll_bar.dart';
 import 'package:imobareld/features/home/new_properties_screen.dart';
 import 'package:imobareld/features/services/delivery_screen.dart';
-import 'package:imobareld/core/widgets/banner_ad_widget.dart';
 import 'package:imobareld/core/constants/bf_locations.dart';
 import 'package:imobareld/core/widgets/responsive_layout.dart';
 import 'package:imobareld/features/home/widgets/realisation_section.dart';
@@ -89,7 +87,6 @@ class _HomeScreenState extends State<HomeScreen> {
       // Charger les pubs dès le démarrage (cache local d'abord, puis Supabase)
       Provider.of<AdController>(context, listen: false).getActiveAds();
     });
-    AdHelper.loadInterstitialAd();
   }
 
   @override
@@ -679,10 +676,6 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
             _buildFilters(),
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 10),
-              child: BannerAdWidget(),
-            ),
             SizedBox(key: _categoryKeys['Appartement'], child: PropertySection(key: ValueKey('Appartement_${_selectedCity}_$_refreshKey'), title: 'Appartement', category: 'Appartement', city: _selectedCity, onCommentTap: (p) => _showCommentSheet(context, p))),
             SizedBox(key: _categoryKeys['Cours Uniques'], child: PropertySection(key: ValueKey('CoursUniques_${_selectedCity}_$_refreshKey'), title: 'Cours Uniques', category: 'Cours Uniques', city: _selectedCity, onCommentTap: (p) => _showCommentSheet(context, p))),
             SizedBox(key: _categoryKeys['Cours Communes'], child: PropertySection(key: ValueKey('CoursCommunes_${_selectedCity}_$_refreshKey'), title: 'Cours Communes', category: 'Cours Communes', city: _selectedCity, onCommentTap: (p) => _showCommentSheet(context, p))),

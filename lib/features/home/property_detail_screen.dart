@@ -18,7 +18,6 @@ import 'package:imobareld/models/review_model.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:imobareld/core/widgets/cached_image.dart';
 import 'package:imobareld/core/widgets/full_screen_image_viewer.dart';
-import 'package:imobareld/core/widgets/banner_ad_widget.dart';
 import 'package:imobareld/core/utils/share_utils.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:imobareld/core/widgets/skeleton_list.dart';
@@ -736,8 +735,6 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           ),
                         ],
                         
-                        const SizedBox(height: 20),
-                        const Center(child: BannerAdWidget()),
                         const SizedBox(height: 100), // Espace pour la barre de contact
                         
                         if (widget.property.amenities.isNotEmpty) ...[

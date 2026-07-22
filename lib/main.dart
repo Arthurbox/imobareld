@@ -20,7 +20,6 @@ import 'package:imobareld/features/home/home_screen.dart';
 import 'package:imobareld/features/owner/owner_dashboard.dart';
 import 'package:imobareld/features/home/announcement_controller.dart';
 import 'package:imobareld/features/admin/admin_controller.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:imobareld/features/home/ad_controller.dart';
 import 'package:imobareld/features/vehicles/vehicle_controller.dart';
 import 'package:imobareld/features/services/delivery_controller.dart';
@@ -31,6 +30,8 @@ import 'package:imobareld/core/services/connectivity_service.dart';
 import 'package:imobareld/core/services/sync_service.dart';
 import 'package:imobareld/core/services/accessibility_settings.dart';
 import 'package:imobareld/core/theme/app_theme.dart';
+import 'package:imobareld/core/utils/app_logger.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:imobareld/core/services/deep_link_service.dart';
 
 import 'dart:io' show Platform;
@@ -44,8 +45,8 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
-  print('--- CRITICAL APP IDENTITY CHECK ---');
-  print('PACKAGE_ID: bf.imobareld.app');
+  appLogger.i('--- CRITICAL APP IDENTITY CHECK ---');
+  appLogger.i('PACKAGE_ID: bf.imobareld.app');
 
   // Initialisation des bindings Flutter
   final WidgetsBinding widgetsBinding =
@@ -75,6 +76,14 @@ void main() async {
         return [];
       },
     );
+
+    if (!kIsWeb) {
+      FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+      PlatformDispatcher.instance.onError = (error, stack) {
+        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+        return true;
+      };
+    }
 
     // Services secondaires initialisés juste après les critiques
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
@@ -151,29 +160,6 @@ void main() async {
           );
         }
       };
-    }
-
-    // Initialisation asynchrone des pubs (ne bloque pas le démarrage)
-    if (!kIsWeb) {
-      () async {
-        try {
-          await MobileAds.instance.initialize();
-          
-          // --- CONFIGURATION APPAREILS DE TEST ---
-          // Ajoutez votre ID d'appareil ici pour tester les pubs sans risque.
-          // L'ID apparaît dans la console en mode DEBUG avec le tag "Ads".
-          await MobileAds.instance.updateRequestConfiguration(
-            RequestConfiguration(
-              testDeviceIds: [
-                // "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX", // Remplacez par votre ID ici
-              ],
-            ),
-          );
-          
-        } catch (e) {
-          debugPrint('Err Ads: $e');
-        }
-      }();
     }
   } catch (e) {
     debugPrint('Erreur lors de l\'initialisation initiale: $e');

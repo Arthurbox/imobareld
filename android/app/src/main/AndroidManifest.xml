@@ -62,11 +62,6 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
-        <!-- ID AdMob de production -->
-        <meta-data
-            android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-4819995149639257~2568071161"/>
-
         <!-- Impeller est désormais activé par défaut. -->
 
 
