@@ -106,8 +106,8 @@ class AdminController with ChangeNotifier {
       // Utilisation de .count() qui renvoie une PostgrestResponse contenant le nombre de lignes
       final results = await Future.wait([
         supabaseService.client.from('profiles').select('id').count(sb.CountOption.exact),
-        supabaseService.client.from('profiles').select('id').eq('role', UserRoles.owner).count(sb.CountOption.exact),
-        supabaseService.client.from('profiles').select('id').eq('role', UserRoles.user).count(sb.CountOption.exact),
+        supabaseService.client.from('profiles').select('id').eq('user_type', UserRoles.owner).count(sb.CountOption.exact),
+        supabaseService.client.from('profiles').select('id').eq('user_type', UserRoles.user).count(sb.CountOption.exact),
         supabaseService.client.from('profiles').select('id').eq('verification_status', 'verified').count(sb.CountOption.exact),
         supabaseService.client.from('profiles').select('id').eq('verification_status', 'pending').count(sb.CountOption.exact),
         supabaseService.client.from('properties').select('id').count(sb.CountOption.exact),
@@ -337,6 +337,56 @@ class AdminController with ChangeNotifier {
     } finally {
       _pendingDeletions.remove(requestId);
       notifyListeners();
+    }
+  }
+
+  // 10. CHATS (ADMIN)
+  Future<List<Map<String, dynamic>>> getAllConversationsAdmin() async {
+    try {
+      final data = await supabaseService.client
+          .from('messages')
+          .select('*, sender:sender_id(user_name, profile_picture), receiver:receiver_id(user_name, profile_picture)')
+          .order('timestamp', ascending: false);
+      
+      final Map<String, Map<String, dynamic>> conversations = {};
+      
+      for (var msg in (data as List)) {
+        // Create a unique key for the pair
+        final ids = [msg['sender_id'], msg['receiver_id']]..sort();
+        final pairKey = '${ids[0]}_${ids[1]}';
+        
+        if (!conversations.containsKey(pairKey)) {
+          conversations[pairKey] = {
+            'user1_id': msg['sender_id'],
+            'user2_id': msg['receiver_id'],
+            'user1_name': msg['sender']?['user_name'] ?? 'Inconnu',
+            'user2_name': msg['receiver']?['user_name'] ?? 'Inconnu',
+            'user1_picture': msg['sender']?['profile_picture'],
+            'user2_picture': msg['receiver']?['profile_picture'],
+            'last_message': msg['message'],
+            'last_message_time': msg['timestamp'],
+            'pair_key': pairKey,
+          };
+        }
+      }
+
+      return conversations.values.toList();
+    } catch (e) {
+      debugPrint("🚨 Erreur récupération conversations globales Admin: $e");
+      return [];
+    }
+  }
+
+  Future<void> deleteConversationAdmin(String user1Id, String user2Id) async {
+    try {
+      await supabaseService.client
+          .from('messages')
+          .delete()
+          .or('and(sender_id.eq.$user1Id,receiver_id.eq.$user2Id),and(sender_id.eq.$user2Id,receiver_id.eq.$user1Id)');
+      notifyListeners();
+    } catch (e) {
+      debugPrint("🚨 Erreur suppression conversation Admin: $e");
+      rethrow;
     }
   }
 }

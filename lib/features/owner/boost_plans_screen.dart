@@ -2,8 +2,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
-import 'package:cinetpay/cinetpay.dart';
-import 'package:imobareld/core/constants/cinetpay_config.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:imobareld/core/services/geniuspay_service.dart';
 import 'package:imobareld/features/home/property_controller.dart';
 
 class BoostPlansScreen extends StatelessWidget {
@@ -70,7 +70,7 @@ class BoostPlansScreen extends StatelessWidget {
 
             // ---- Starter Plan ----
             InkWell(
-              onTap: () => _payWithCinetPay(context, 500, 7, 'Starter'),
+              onTap: () => _payWithGeniusPay(context, 500, 7, 'Starter'),
               child: _buildPlanCard(
                 context,
                 title: 'Starter',
@@ -86,7 +86,7 @@ class BoostPlansScreen extends StatelessWidget {
 
             // ---- Standard Plan ----
             InkWell(
-              onTap: () => _payWithCinetPay(context, 1000, 15, 'Standard'),
+              onTap: () => _payWithGeniusPay(context, 1000, 15, 'Standard'),
               child: _buildPlanCard(
                 context,
                 title: 'Standard',
@@ -103,7 +103,7 @@ class BoostPlansScreen extends StatelessWidget {
 
             // ---- Premium Plan ----
             InkWell(
-              onTap: () => _payWithCinetPay(context, 2000, 30, 'Premium'),
+              onTap: () => _payWithGeniusPay(context, 2000, 30, 'Premium'),
               child: _buildPlanCard(
                 context,
                 title: 'Premium',
@@ -124,45 +124,136 @@ class BoostPlansScreen extends StatelessWidget {
     );
   }
 
-  void _payWithCinetPay(BuildContext context, int amount, int durationDays, String planName) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (ctx) => CinetPayCheckout(
-          title: 'Boost $durationDays jours',
-          titleStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          titleBackgroundColor: const Color(0xFF1A3A8F),
-          configData: const <String, dynamic>{
-            'apikey': CinetPayConfig.apiKey,
-            'site_id': CinetPayConfig.siteId,
-            'notify_url': CinetPayConfig.notifyUrl,
-          },
-          paymentData: <String, dynamic>{
-            'transaction_id': 'TXN_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(1000)}',
-            'amount': amount,
-            'currency': 'XOF',
-            'channels': 'ALL',
-            'description': 'Boost immobilier $durationDays jours',
-          },
-          waitResponse: (response) async {
-            if (response['status'] == 'ACCEPTED') {
-              Navigator.pop(ctx); // Ferme CinetPay
-              final success = await Provider.of<PropertyController>(context, listen: false).boostProperty(propertyId, durationDays, planName);
-              if (success && context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Paiement réussi, propriété boostée !')));
-                Navigator.pop(context); // Retourne au dashboard
+  Future<void> _payWithGeniusPay(BuildContext context, int amount, int durationDays, String planName) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final geniusPay = GeniusPayService();
+      final result = await geniusPay.createCheckoutSession(
+        amount: amount,
+        propertyId: propertyId,
+        durationDays: durationDays,
+        planName: planName,
+      );
+
+      if (context.mounted) Navigator.pop(context); // Cacher le chargement
+
+      if (result != null) {
+        final String checkoutUrl = result['checkoutUrl']!;
+        final String transactionId = result['transactionId']!;
+
+        await geniusPay.openCheckoutPage(checkoutUrl);
+        
+        if (context.mounted) {
+          _showTransactionStatusDialog(context, transactionId);
+        }
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Erreur: Impossible de générer le lien de paiement.')),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.pop(context); // Cacher le chargement
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur: $e')),
+        );
+      }
+    }
+  }
+
+  void _showTransactionStatusDialog(BuildContext context, String transactionId) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Statut du paiement'),
+          content: StreamBuilder<List<Map<String, dynamic>>>(
+            stream: Supabase.instance.client
+                .from('transactions')
+                .stream(primaryKey: ['id'])
+                .eq('id', transactionId),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Vérification en cours...'),
+                  ],
+                );
               }
-            } else {
-              Navigator.pop(ctx);
-              if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Paiement échoué: ${response['status']}')));
-            }
-          },
-          onError: (error) {
-            Navigator.pop(ctx);
-            if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $error')));
-          },
-        ),
-      ),
+
+              if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                return const Text('Transaction introuvable.');
+              }
+
+              final data = snapshot.data!.first;
+              final status = data['status'] as String? ?? 'unknown';
+
+              Widget statusIcon;
+              String statusText;
+
+              switch (status) {
+                case 'created':
+                case 'initiated':
+                  statusIcon = const CircularProgressIndicator();
+                  statusText = 'Paiement initié. Veuillez finaliser sur la page sécurisée...';
+                  break;
+                case 'pending':
+                  statusIcon = const CircularProgressIndicator();
+                  statusText = 'Paiement en attente de confirmation par l\'opérateur...';
+                  break;
+                case 'completed':
+                  statusIcon = const Icon(Icons.check_circle, color: Colors.green, size: 48);
+                  statusText = 'Paiement réussi ! Votre annonce est maintenant boostée.';
+                  break;
+                case 'failed':
+                  statusIcon = const Icon(Icons.error, color: Colors.red, size: 48);
+                  statusText = 'Le paiement a échoué.';
+                  break;
+                case 'cancelled':
+                  statusIcon = const Icon(Icons.cancel, color: Colors.orange, size: 48);
+                  statusText = 'Le paiement a été annulé.';
+                  break;
+                case 'refunded':
+                  statusIcon = const Icon(Icons.money_off, color: Colors.blue, size: 48);
+                  statusText = 'Le paiement a été remboursé.';
+                  break;
+                default:
+                  statusIcon = const Icon(Icons.help, color: Colors.grey, size: 48);
+                  statusText = 'Statut inconnu : $status';
+              }
+
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  statusIcon,
+                  const SizedBox(height: 16),
+                  Text(statusText, textAlign: TextAlign.center),
+                ],
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.pop(context); // Retour au dashboard
+              },
+              child: const Text('Fermer'),
+            ),
+          ],
+        );
+      },
     );
   }
 

@@ -1,5 +1,6 @@
 // Import des packages nécessaires
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:imobareld/core/constants/app_colors.dart';
 import 'package:imobareld/core/constants/user_roles.dart';
 import 'package:imobareld/features/auth/auth_controller.dart';
@@ -56,13 +57,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   /// Indique si la confirmation du mot de passe est masquée
   bool _obscureConfirmPassword = true;
   
-  bool _acceptTerms = false;
-
-  /// Indique si l'utilisateur a accepté la politique de confidentialité
-  bool _acceptPrivacy = false;
+  bool _acceptTermsAndPrivacy = false;
 
   bool _showTermsError = false;
-  bool _showPrivacyError = false;
 
   // ========================================
   // MÉTHODE : NETTOYAGE
@@ -87,24 +84,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
   /// Gère le processus d'inscription quand l'utilisateur appuie sur le bouton
   Future<void> _handleRegister() async {
     setState(() {
-      _showTermsError = !_acceptTerms;
-      _showPrivacyError = !_acceptPrivacy;
+      _showTermsError = !_acceptTermsAndPrivacy;
     });
 
     // 0. Vérifier l'acceptation des CGU et de la Politique de Confidentialité
-    if (!_acceptTerms || !_acceptPrivacy) {
-      String message = '';
-      if (!_acceptTerms && !_acceptPrivacy) {
-        message = 'Veuillez accepter les CGU et la Politique de Confidentialité';
-      } else if (!_acceptTerms) {
-        message = 'Veuillez accepter les conditions d\'utilisation (CGU)';
-      } else {
-        message = 'Veuillez accepter la politique de confidentialité';
-      }
-      
+    if (!_acceptTermsAndPrivacy) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
+        const SnackBar(
+          content: Text('Veuillez accepter les CGU et la Politique de Confidentialité'),
           backgroundColor: AppColors.error,
         ),
       );
@@ -179,7 +166,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(24.0),
-            child: Form(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 500),
+                child: Form(
               key: _formKey,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -608,7 +598,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(height: 16),
 
                   // ========================================
-                  // CASE À COCHER CGU
+                  // CASE À COCHER CGU & CONFIDENTIALITÉ
                   // ========================================
                   Container(
                     padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
@@ -620,108 +610,55 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     child: Row(
                       children: [
                         Checkbox(
-                          value: _acceptTerms,
+                          value: _acceptTermsAndPrivacy,
                           activeColor: AppColors.primaryOrange,
                           onChanged: (value) {
                             setState(() {
-                              _acceptTerms = value ?? false;
-                              if (_acceptTerms) _showTermsError = false;
+                              _acceptTermsAndPrivacy = value ?? false;
+                              if (_acceptTermsAndPrivacy) _showTermsError = false;
                             });
                           },
                         ),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const LegalDocumentsScreen(isTermsOfService: true),
-                              ),
-                            );
-                          },
+                        Expanded(
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(
-                                Icons.description,
-                                size: 18,
-                                color: Theme.of(context).primaryColor,
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2.0),
+                                child: Icon(
+                                  Icons.verified_user_outlined,
+                                  size: 18,
+                                  color: Theme.of(context).primaryColor,
+                                ),
                               ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: RichText(
                                   text: TextSpan(
                                     text: 'J\'accepte les ',
-                                    style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color),
+                                    style: TextStyle(
+                                      color: Theme.of(context).textTheme.bodyMedium?.color,
+                                      height: 1.4,
+                                    ),
                                     children: [
                                       TextSpan(
-                                        text: 'Conditions Générales d\'Utilisation',
+                                        text: 'CGU',
                                         style: TextStyle(
                                           color: Theme.of(context).primaryColor,
                                           fontWeight: FontWeight.bold,
                                           decoration: TextDecoration.underline,
                                         ),
+                                        recognizer: TapGestureRecognizer()..onTap = () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => const LegalDocumentsScreen(isTermsOfService: true),
+                                            ),
+                                          );
+                                        },
                                       ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // ========================================
-                  // CASE À COCHER POLITIQUE DE CONFIDENTIALITÉ
-                  // ========================================
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                    decoration: BoxDecoration(
-                      color: _showPrivacyError ? Colors.red.withValues(alpha: 0.1) : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                      border: _showPrivacyError ? Border.all(color: Colors.red) : null,
-                    ),
-                    child: Row(
-                      children: [
-                        Checkbox(
-                          value: _acceptPrivacy,
-                          activeColor: AppColors.primaryOrange,
-                          onChanged: (value) {
-                            setState(() {
-                              _acceptPrivacy = value ?? false;
-                              if (_acceptPrivacy) _showPrivacyError = false;
-                            });
-                          },
-                        ),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const LegalDocumentsScreen(isTermsOfService: false),
-                              ),
-                            );
-                          },
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.privacy_tip,
-                                size: 18,
-                                color: Theme.of(context).primaryColor,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: RichText(
-                                  text: TextSpan(
-                                    text: 'J\'accepte la ',
-                                    style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color),
-                                    children: [
+                                      const TextSpan(text: ' et la '),
                                       TextSpan(
                                         text: 'Politique de Confidentialité',
                                         style: TextStyle(
@@ -729,6 +666,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                           fontWeight: FontWeight.bold,
                                           decoration: TextDecoration.underline,
                                         ),
+                                        recognizer: TapGestureRecognizer()..onTap = () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => const LegalDocumentsScreen(isTermsOfService: false),
+                                            ),
+                                          );
+                                        },
                                       ),
                                     ],
                                   ),
@@ -737,9 +682,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ],
                           ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 16),
 
@@ -815,79 +759,122 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(height: 24),
 
                   // ========================================
-                  // BOUTON "CONTINUER AVEC GOOGLE"
+                  // BOUTONS "CONTINUER AVEC..."
                   // ========================================
                   Consumer<AuthController>(
                     builder: (context, authController, _) {
-                      return SizedBox(
-                        width: double.infinity,
-                        height: 56,
-                        child: OutlinedButton.icon(
-                          onPressed: authController.isLoading
-                              ? null
-                              : () async {
-                                  final navigator = Navigator.of(context);
-                                  final messenger = ScaffoldMessenger.of(context);
+                      return Row(
+                        children: [
+                          // Bouton Google
+                          Expanded(
+                            child: SizedBox(
+                              height: 56,
+                              child: OutlinedButton.icon(
+                                onPressed: authController.isLoading
+                                    ? null
+                                    : () async {
+                                        final navigator = Navigator.of(context);
+                                        final messenger = ScaffoldMessenger.of(context);
+                                        
+                                        setState(() {
+                                          _showTermsError = !_acceptTermsAndPrivacy;
+                                        });
+                                        if (!_acceptTermsAndPrivacy) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(
+                                              content: Text('Veuillez accepter les CGU et la Politique de Confidentialité'),
+                                              backgroundColor: AppColors.error,
+                                            ),
+                                          );
+                                          return;
+                                        }
 
-                                  // 0. Vérifier l'acceptation
-                                  setState(() {
-                                    _showTermsError = !_acceptTerms;
-                                    _showPrivacyError = !_acceptPrivacy;
-                                  });
-                                  if (!_acceptTerms || !_acceptPrivacy) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Veuillez accepter les CGU et la Politique de Confidentialité'),
-                                        backgroundColor: AppColors.error,
-                                      ),
-                                    );
-                                    return;
-                                  }
-
-                                  // Connexion avec Google en utilisant le type d'utilisateur sélectionné
-                                  final success = await authController.signInWithGoogle(
-                                    userType: _selectedUserType,
-                                  );
-                                  
-                                  if (!mounted) return;
-
-                                  if (success) {
-                                    // Utiliser la redirection intelligente centralisée
-                                    navigator.pushReplacement(
-                                      MaterialPageRoute(builder: (_) => authController.getNextScreen()),
-                                    );
-                                  } else {
-                                    if (authController.errorMessage != null) {
-                                      messenger.showSnackBar(
-                                        SnackBar(
-                                          content: Text(authController.errorMessage!),
-                                          backgroundColor: AppColors.error,
-                                        ),
-                                      );
-                                    }
-                                  }
-                                },
-                          icon: Image.asset(
-                            'assets/images/Google__G__logo.svg.webp',
-                            height: 24,
-                            width: 24,
-                          ),
-                          label: Text(
-                            'Continuer avec Google',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Theme.of(context).brightness == Brightness.dark ? Colors.white : AppColors.textDark,
+                                        final success = await authController.signInWithGoogle(userType: _selectedUserType);
+                                        if (!mounted) return;
+                                        
+                                        if (success) {
+                                          navigator.pushReplacement(MaterialPageRoute(builder: (_) => authController.getNextScreen()));
+                                        } else if (authController.errorMessage != null) {
+                                          messenger.showSnackBar(SnackBar(content: Text(authController.errorMessage!), backgroundColor: AppColors.error));
+                                        }
+                                      },
+                                icon: Image.asset('assets/images/Google__G__logo.svg.webp', height: 24, width: 24),
+                                label: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    'Google',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Theme.of(context).brightness == Brightness.dark ? Colors.white : AppColors.textDark,
+                                    ),
+                                  ),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                  side: BorderSide(color: Theme.of(context).dividerColor, width: 2),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                                  backgroundColor: Theme.of(context).cardColor,
+                                ),
+                              ),
                             ),
                           ),
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(color: Theme.of(context).dividerColor, width: 2),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                          const SizedBox(width: 16),
+                          // Bouton Facebook
+                          Expanded(
+                            child: SizedBox(
+                              height: 56,
+                              child: ElevatedButton.icon(
+                                onPressed: authController.isLoading
+                                    ? null
+                                    : () async {
+                                        final navigator = Navigator.of(context);
+                                        final messenger = ScaffoldMessenger.of(context);
+                                        
+                                        setState(() {
+                                          _showTermsError = !_acceptTermsAndPrivacy;
+                                        });
+                                        if (!_acceptTermsAndPrivacy) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(
+                                              content: Text('Veuillez accepter les CGU et la Politique de Confidentialité'),
+                                              backgroundColor: AppColors.error,
+                                            ),
+                                          );
+                                          return;
+                                        }
+
+                                        final success = await authController.signInWithFacebook(userType: _selectedUserType);
+                                        if (!mounted) return;
+                                        
+                                        if (success) {
+                                          navigator.pushReplacement(MaterialPageRoute(builder: (_) => authController.getNextScreen()));
+                                        } else if (authController.errorMessage != null) {
+                                          messenger.showSnackBar(SnackBar(content: Text(authController.errorMessage!), backgroundColor: AppColors.error));
+                                        }
+                                      },
+                                icon: const Icon(Icons.facebook, color: Colors.white, size: 28),
+                                label: const FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    'Facebook',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                  backgroundColor: const Color(0xFF1877F2), // Facebook Blue
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                                  elevation: 0,
+                                ),
+                              ),
                             ),
-                            backgroundColor: Theme.of(context).cardColor,
                           ),
-                        ),
+                        ],
                       );
                     },
                   ),
@@ -929,9 +916,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
             ),
           ),
+              ),
+            ),
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }

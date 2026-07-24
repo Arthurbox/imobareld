@@ -5,6 +5,7 @@ import 'package:imobareld/features/home/realisation_controller.dart';
 import 'package:imobareld/models/realisation_model.dart';
 import 'package:imobareld/features/home/widgets/realisation_card.dart';
 import 'package:imobareld/core/constants/app_colors.dart';
+import 'package:imobareld/core/widgets/skeleton_list.dart';
 
 class RealisationSection extends StatelessWidget {
   const RealisationSection({super.key});
@@ -44,7 +45,7 @@ class RealisationSection extends StatelessWidget {
                     !snapshot.hasData) {
                   return const SizedBox(
                     height: 250,
-                    child: Center(child: CircularProgressIndicator()),
+                    child: SkeletonList(itemCount: 3, isHorizontal: true, itemHeight: 250),
                   );
                 }
 

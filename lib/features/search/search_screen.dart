@@ -269,14 +269,38 @@ class SearchScreenState extends State<SearchScreen> {
                           return _buildEmptyState(theme);
                         }
     
-                        return ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          cacheExtent: 1500, // PRÉ-CHARGEMENT pour fluidité extrême
-                          itemCount: properties.length,
-                          itemBuilder: (context, index) {
-                            return AnimatedPropertyListItem(
-                              property: properties[index],
-                              index: index,
+                        return LayoutBuilder(
+                          builder: (context, constraints) {
+                            if (constraints.maxWidth > 700) {
+                              int crossAxisCount = constraints.maxWidth > 1000 ? 2 : 2;
+                              return GridView.builder(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                cacheExtent: 1500,
+                                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: crossAxisCount,
+                                  crossAxisSpacing: 16,
+                                  mainAxisSpacing: 0, // margin is handled in the item
+                                  mainAxisExtent: 155, // 120 image + paddings
+                                ),
+                                itemCount: properties.length,
+                                itemBuilder: (context, index) {
+                                  return AnimatedPropertyListItem(
+                                    property: properties[index],
+                                    index: index,
+                                  );
+                                },
+                              );
+                            }
+                            return ListView.builder(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              cacheExtent: 1500, // PRÉ-CHARGEMENT pour fluidité extrême
+                              itemCount: properties.length,
+                              itemBuilder: (context, index) {
+                                return AnimatedPropertyListItem(
+                                  property: properties[index],
+                                  index: index,
+                                );
+                              },
                             );
                           },
                         );

@@ -5,7 +5,6 @@ import 'package:imobareld/core/widgets/cached_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:imobareld/core/constants/app_colors.dart';
-import 'package:imobareld/core/services/ad_helper.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:imobareld/features/auth/auth_controller.dart';
@@ -21,6 +20,7 @@ import 'package:imobareld/features/owner/owner_dashboard.dart';
 import 'package:imobareld/features/home/announcement_screen.dart';
 import 'package:imobareld/features/profile/profile_screen.dart';
 import 'package:imobareld/features/profile/my_boosts_screen.dart';
+import 'package:imobareld/features/owner/subscription_screen.dart';
 import 'package:imobareld/features/admin/admin_dashboard.dart';
 import 'package:imobareld/features/home/announcement_controller.dart';
 import 'package:imobareld/models/announcement_model.dart';
@@ -37,7 +37,6 @@ import 'package:imobareld/features/home/widgets/banner_carousel.dart';
 import 'package:imobareld/features/home/widgets/category_scroll_bar.dart';
 import 'package:imobareld/features/home/new_properties_screen.dart';
 import 'package:imobareld/features/services/delivery_screen.dart';
-import 'package:imobareld/core/widgets/banner_ad_widget.dart';
 import 'package:imobareld/core/constants/bf_locations.dart';
 import 'package:imobareld/core/widgets/responsive_layout.dart';
 import 'package:imobareld/features/home/widgets/realisation_section.dart';
@@ -88,7 +87,6 @@ class _HomeScreenState extends State<HomeScreen> {
       // Charger les pubs dès le démarrage (cache local d'abord, puis Supabase)
       Provider.of<AdController>(context, listen: false).getActiveAds();
     });
-    AdHelper.loadInterstitialAd();
   }
 
   @override
@@ -187,7 +185,7 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context, auth, _) {
         final user = auth.currentUser;
         return SizedBox(
-          width: kIsWeb ? 350 : MediaQuery.of(context).size.width * 0.75,
+          width: kIsWeb ? 280 : MediaQuery.of(context).size.width * 0.75,
           child: Drawer(
             child: ListView(
               padding: EdgeInsets.zero,
@@ -258,6 +256,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   _buildDrawerItem(Icons.flash_on, 'Mes Boostes', () {
                     Navigator.pop(context);
                     Navigator.push(context, MaterialPageRoute(builder: (_) => const MyBoostsScreen()));
+                  }),
+                if ((user?.isOwner ?? false) || (user?.isAdmin ?? false))
+                  _buildDrawerItem(Icons.card_membership, 'Abonnement', () {
+                    Navigator.pop(context);
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
                   }),
 
                 _buildDrawerItem(Icons.directions_car_outlined, 'Location de véhicule', () {
@@ -673,10 +676,6 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
             _buildFilters(),
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 10),
-              child: BannerAdWidget(),
-            ),
             SizedBox(key: _categoryKeys['Appartement'], child: PropertySection(key: ValueKey('Appartement_${_selectedCity}_$_refreshKey'), title: 'Appartement', category: 'Appartement', city: _selectedCity, onCommentTap: (p) => _showCommentSheet(context, p))),
             SizedBox(key: _categoryKeys['Cours Uniques'], child: PropertySection(key: ValueKey('CoursUniques_${_selectedCity}_$_refreshKey'), title: 'Cours Uniques', category: 'Cours Uniques', city: _selectedCity, onCommentTap: (p) => _showCommentSheet(context, p))),
             SizedBox(key: _categoryKeys['Cours Communes'], child: PropertySection(key: ValueKey('CoursCommunes_${_selectedCity}_$_refreshKey'), title: 'Cours Communes', category: 'Cours Communes', city: _selectedCity, onCommentTap: (p) => _showCommentSheet(context, p))),
@@ -755,8 +754,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        _buildNavItem(0, Icons.home, 'Accueil'),
-                        _buildNavItem(1, Icons.tune, 'Filtre'),
+                        Expanded(child: _buildNavItem(0, Icons.home, 'Accueil')),
+                        Expanded(child: _buildNavItem(1, Icons.tune, 'Filtre')),
                       ],
                     ),
                   ),
@@ -767,8 +766,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        AnnouncementBadge(child: _buildNavItem(2, Icons.campaign_outlined, 'Annonce')),
-                        _buildNavItem(3, Icons.person_outline, 'Profil'),
+                        Expanded(child: AnnouncementBadge(child: _buildNavItem(2, Icons.campaign_outlined, 'Annonce'))),
+                        Expanded(child: _buildNavItem(3, Icons.person_outline, 'Profil')),
                       ],
                     ),
                   ),
@@ -777,22 +776,22 @@ class _HomeScreenState extends State<HomeScreen> {
             : Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _buildNavItem(0, Icons.home, 'Accueil'),
-                  _buildNavItem(1, Icons.tune, 'Filtre'),
-                  AnnouncementBadge(child: _buildNavItem(2, Icons.campaign_outlined, 'Annonce')),
-                  _buildNavItem(3, Icons.person_outline, 'Profil'),
+                  Expanded(child: _buildNavItem(0, Icons.home, 'Accueil')),
+                  Expanded(child: _buildNavItem(1, Icons.tune, 'Filtre')),
+                  Expanded(child: AnnouncementBadge(child: _buildNavItem(2, Icons.campaign_outlined, 'Annonce'))),
+                  Expanded(child: _buildNavItem(3, Icons.person_outline, 'Profil')),
                 ],
               ),
       ),
     );
   }
 
-
   Widget _buildNavItem(int index, IconData icon, String label) {
     final isSelected = _selectedIndex == index;
     return Tooltip(
       message: label,
       child: MaterialButton(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
         minWidth: 40,
         onPressed: () {
           // Basculer vers l'onglet
@@ -814,9 +813,14 @@ class _HomeScreenState extends State<HomeScreen> {
         },
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 22, color: isSelected ? Theme.of(context).primaryColor : Theme.of(context).textTheme.bodyMedium?.color),
-            Text(label, style: TextStyle(color: isSelected ? Theme.of(context).primaryColor : Theme.of(context).textTheme.bodyMedium?.color, fontSize: 11)),
+            Text(
+              label, 
+              style: TextStyle(color: isSelected ? Theme.of(context).primaryColor : Theme.of(context).textTheme.bodyMedium?.color, fontSize: 11),
+              overflow: TextOverflow.ellipsis,
+            ),
           ],
         ),
       ),

@@ -14,7 +14,7 @@
 		<key>CFBundleInfoDictionaryVersion</key>
 		<string>6.0</string>
 		<key>CFBundleName</key>
-		<string>imobareld</string>
+		<string>Imobareld</string>
 		<key>CFBundlePackageType</key>
 		<string>APPL</string>
 		<key>CFBundleShortVersionString</key>
@@ -55,11 +55,13 @@
 		<string>IMOBARELD a besoin d'accéder à votre galerie pour sélectionner des images.</string>
 		<key>NSPhotoLibraryAddUsageDescription</key>
 		<string>IMOBARELD a besoin d'enregistrer des images dans votre galerie.</string>
-		<!-- ID AdMob de production -->
-		<key>GADApplicationIdentifier</key>
-		<string>ca-app-pub-4819995149639257~2568071161</string>
 		<key>UIStatusBarHidden</key>
 		<false/>
+		<!-- 📍 PERMISSIONS LOCALISATION (Manquantes mais obligatoires pour Google Maps) -->
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>IMOBARELD a besoin de votre position pour vous montrer les annonces à proximité sur la carte.</string>
+		<key>NSLocationAlwaysUsageDescription</key>
+		<string>IMOBARELD a besoin de votre position en arrière-plan pour les fonctionnalités de carte.</string>
 		<!-- 🔗 DEEP LINKING (Custom Scheme) -->
 		<key>CFBundleURLTypes</key>
 		<array>

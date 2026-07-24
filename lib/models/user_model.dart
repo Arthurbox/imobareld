@@ -54,6 +54,15 @@ class UserModel {
   /// Token Firebase Cloud Messaging pour les push notifications
   final String? fcmToken;
 
+  /// Statut de l'abonnement : 'trial', 'active', 'expired', 'none'
+  final String subscriptionStatus;
+
+  /// Date de fin de la période d'essai (6 mois)
+  final DateTime? trialEndsAt;
+
+  /// Date de fin de l'abonnement payant
+  final DateTime? subscriptionEndsAt;
+
   /// Helper pour savoir si l'utilisateur est vérifié
   bool get isVerified => verificationStatus == 'verified';
 
@@ -62,6 +71,18 @@ class UserModel {
 
   /// Un utilisateur a les droits de propriétaire s'il a le type 'propriétaire' OU s'il est admin
   bool get isOwner => userType == UserRoles.owner || isAdmin;
+
+  /// Vérifie si l'utilisateur a un abonnement actif ou une période d'essai valide
+  bool get hasActiveSubscription {
+    if (isAdmin) return true; // Les admins n'ont pas besoin d'abonnement
+    if (!isOwner) return true; // Les locataires n'ont pas besoin d'abonnement
+    
+    final now = DateTime.now();
+    final isTrialValid = trialEndsAt != null && trialEndsAt!.isAfter(now);
+    final isSubValid = subscriptionEndsAt != null && subscriptionEndsAt!.isAfter(now);
+    
+    return isTrialValid || isSubValid;
+  }
 
   /// Vérifie si l'utilisateur peut publier (doit être propriétaire/admin ET avoir un téléphone)
   bool get canPost => isOwner && phone != null && phone!.isNotEmpty && phone != 'Non renseigné';
@@ -91,6 +112,9 @@ class UserModel {
     this.lastReadAnnouncement,
     this.lastReadProperties,
     this.fcmToken,
+    this.subscriptionStatus = 'trial',
+    this.trialEndsAt,
+    this.subscriptionEndsAt,
   });
 
   // ========================================
@@ -124,6 +148,13 @@ class UserModel {
           ? DateTime.parse((map['lastReadProperties'] ?? map['last_read_properties']).toString()) 
           : null,
       fcmToken: map['fcm_token'] ?? map['fcmToken'],
+      subscriptionStatus: map['subscription_status'] ?? map['subscriptionStatus'] ?? 'none',
+      trialEndsAt: (map['trial_ends_at'] ?? map['trialEndsAt']) != null 
+          ? DateTime.parse((map['trial_ends_at'] ?? map['trialEndsAt']).toString()) 
+          : null,
+      subscriptionEndsAt: (map['subscription_ends_at'] ?? map['subscriptionEndsAt']) != null 
+          ? DateTime.parse((map['subscription_ends_at'] ?? map['subscriptionEndsAt']).toString()) 
+          : null,
     );
   }
 
@@ -142,6 +173,7 @@ class UserModel {
       createdAt: DateTime.now(),
       role: 'user',
       fcmToken: null,
+      subscriptionStatus: 'none',
     );
   }
 
@@ -164,6 +196,9 @@ class UserModel {
       'last_read_announcement': lastReadAnnouncement?.toIso8601String(),
       'last_read_properties': lastReadProperties?.toIso8601String(),
       'fcm_token': fcmToken,
+      'subscription_status': subscriptionStatus,
+      'trial_ends_at': trialEndsAt?.toIso8601String(),
+      'subscription_ends_at': subscriptionEndsAt?.toIso8601String(),
     };
   }
 
@@ -187,6 +222,9 @@ class UserModel {
     DateTime? lastReadAnnouncement,
     DateTime? lastReadProperties,
     String? fcmToken,
+    String? subscriptionStatus,
+    DateTime? trialEndsAt,
+    DateTime? subscriptionEndsAt,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -204,6 +242,9 @@ class UserModel {
       lastReadAnnouncement: lastReadAnnouncement ?? this.lastReadAnnouncement,
       lastReadProperties: lastReadProperties ?? this.lastReadProperties,
       fcmToken: fcmToken ?? this.fcmToken,
+      subscriptionStatus: subscriptionStatus ?? this.subscriptionStatus,
+      trialEndsAt: trialEndsAt ?? this.trialEndsAt,
+      subscriptionEndsAt: subscriptionEndsAt ?? this.subscriptionEndsAt,
     );
   }
 }

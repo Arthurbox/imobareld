@@ -7,6 +7,7 @@ import 'package:imobareld/features/auth/auth_controller.dart';
 import 'package:imobareld/features/home/property_controller.dart';
 import 'package:imobareld/models/property_model.dart';
 import 'package:intl/intl.dart';
+import 'package:imobareld/core/widgets/skeleton_list.dart';
 
 class MyBoostsScreen extends StatefulWidget {
   const MyBoostsScreen({super.key});
@@ -84,7 +85,7 @@ class _MyBoostsScreenState extends State<MyBoostsScreen> with SingleTickerProvid
         future: Provider.of<PropertyController>(context, listen: false).getPropertiesByOwner(userId),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const SkeletonList(itemCount: 4, itemHeight: 120);
           }
           if (snapshot.hasError) {
             return const Center(child: Text('Erreur lors du chargement des annonces'));

@@ -55,9 +55,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         elevation: 0,
         foregroundColor: Theme.of(context).textTheme.bodyLarge?.color,
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
-        child: Form(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 500),
+            child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -110,6 +113,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 ),
               ),
             ],
+          ),
+            ),
           ),
         ),
       ),

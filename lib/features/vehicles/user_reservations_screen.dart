@@ -5,6 +5,7 @@ import 'package:imobareld/features/auth/auth_controller.dart';
 import 'package:imobareld/features/vehicles/rental_controller.dart';
 import 'package:imobareld/features/vehicles/widgets/reservation_card.dart';
 import 'package:imobareld/models/reservation_model.dart';
+import 'package:imobareld/core/widgets/skeleton_list.dart';
 
 class UserReservationsScreen extends StatefulWidget {
   const UserReservationsScreen({super.key});
@@ -44,7 +45,7 @@ class _UserReservationsScreenState extends State<UserReservationsScreen> {
           future: rentalCtrl.getUserReservations(auth.currentUser!.id),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
+              return const SkeletonList(itemCount: 5, itemHeight: 120);
             }
 
             if (snapshot.hasError) {

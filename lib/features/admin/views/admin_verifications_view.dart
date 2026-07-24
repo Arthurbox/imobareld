@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:imobareld/core/widgets/cached_image.dart';
+import 'package:imobareld/core/widgets/full_screen_image_viewer.dart';
+import 'package:imobareld/core/widgets/skeleton_list.dart';
 import 'package:provider/provider.dart';
 import 'package:imobareld/features/admin/admin_controller.dart';
 import 'package:imobareld/models/user_model.dart';
@@ -21,7 +23,7 @@ class _AdminVerificationsViewState extends State<AdminVerificationsView> {
     return StreamBuilder<List<UserModel>>(
       stream: adminCtrl.pendingVerificationsStream,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+        if (snapshot.connectionState == ConnectionState.waiting) return const SkeletonList(itemCount: 6, itemHeight: 80);
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const Center(
             child: Column(

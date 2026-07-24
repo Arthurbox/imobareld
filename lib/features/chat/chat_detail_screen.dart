@@ -4,6 +4,7 @@ import 'package:imobareld/core/constants/app_colors.dart';
 import 'package:imobareld/features/auth/auth_controller.dart';
 import 'package:imobareld/features/chat/chat_controller.dart';
 import 'package:imobareld/models/message_model.dart';
+import 'package:imobareld/core/widgets/skeleton_list.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final String otherUserId;
@@ -67,7 +68,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             children: [
               Expanded(
                 child: chatController.isLoadingMessages
-                    ? const Center(child: CircularProgressIndicator())
+                    ? const SkeletonList(itemCount: 6, itemHeight: 60)
                     : ListView.builder(
                         reverse: true, // Affiche du bas vers le haut
                         padding: const EdgeInsets.all(16),

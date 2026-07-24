@@ -6,6 +6,7 @@ import 'package:imobareld/core/widgets/shimmer_loading.dart';
 import 'package:imobareld/core/widgets/property_card.dart';
 import 'package:imobareld/features/auth/auth_controller.dart' as import_auth;
 import 'package:imobareld/models/comment_model.dart';
+import 'package:imobareld/core/widgets/skeleton_list.dart';
 
 class CategoryListingScreen extends StatefulWidget {
   final String category;
@@ -78,19 +79,44 @@ class _CategoryListingScreenState extends State<CategoryListingScreen> {
             return const Center(child: Text("Aucune annonce trouvée."));
           }
 
-          return ListView.builder(
-            controller: _scrollController,
-            padding: const EdgeInsets.all(16),
-            cacheExtent: 1500, // PRÉ-CHARGEMENT pour une fluidité maximale
-            itemCount: properties.length,
-            itemBuilder: (context, index) {
-              return Container(
-                height: 260,
-                margin: const EdgeInsets.only(bottom: 16),
-                child: PropertyCard(
-                  property: properties[index],
-                  onCommentTap: () => _showCommentSheet(context, properties[index]),
-                ),
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth > 600) {
+                int crossAxisCount = constraints.maxWidth > 900 ? 3 : 2;
+                return GridView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.all(16),
+                  cacheExtent: 1500,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    mainAxisExtent: 260, // Fixed height to match mobile container
+                  ),
+                  itemCount: properties.length,
+                  itemBuilder: (context, index) {
+                    return PropertyCard(
+                      property: properties[index],
+                      onCommentTap: () => _showCommentSheet(context, properties[index]),
+                    );
+                  },
+                );
+              }
+              return ListView.builder(
+                controller: _scrollController,
+                padding: const EdgeInsets.all(16),
+                cacheExtent: 1500, // PRÉ-CHARGEMENT pour une fluidité maximale
+                itemCount: properties.length,
+                itemBuilder: (context, index) {
+                  return Container(
+                    height: 260,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    child: PropertyCard(
+                      property: properties[index],
+                      onCommentTap: () => _showCommentSheet(context, properties[index]),
+                    ),
+                  );
+                },
               );
             },
           );
@@ -129,7 +155,7 @@ class _CategoryListingScreenState extends State<CategoryListingScreen> {
                 child: StreamBuilder<List<CommentModel>>(
                   stream: Provider.of<PropertyController>(context, listen: false).getCommentsStream(property.id!),
                   builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+                    if (snapshot.connectionState == ConnectionState.waiting) return const SkeletonList(itemCount: 4, itemHeight: 70);
                     if (snapshot.hasError) return Center(child: Text('Erreur: ${snapshot.error}'));
                     final comments = snapshot.data ?? [];
                     if (comments.isEmpty) return const Center(child: Text('Aucun commentaire pour le moment'));

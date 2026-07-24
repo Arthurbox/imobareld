@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:imobareld/models/ad_model.dart';
 import 'package:imobareld/core/widgets/cached_image.dart';
+import 'package:imobareld/core/widgets/skeleton_banner.dart';
 
 class BannerCarousel extends StatefulWidget {
   final List<AdModel> ads;
@@ -66,15 +67,7 @@ class _BannerCarouselState extends State<BannerCarousel> {
   @override
   Widget build(BuildContext context) {
     if (widget.isLoading) {
-      return Container(
-        height: 220,
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: const Center(child: CircularProgressIndicator()),
-      );
+      return const SkeletonBanner();
     }
 
     if (widget.ads.isEmpty) return const SizedBox.shrink();

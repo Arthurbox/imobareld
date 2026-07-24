@@ -18,9 +18,10 @@ import 'package:imobareld/models/review_model.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:imobareld/core/widgets/cached_image.dart';
 import 'package:imobareld/core/widgets/full_screen_image_viewer.dart';
-import 'package:imobareld/core/widgets/banner_ad_widget.dart';
 import 'package:imobareld/core/utils/share_utils.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:imobareld/core/widgets/responsive_layout.dart';
+import 'package:imobareld/core/widgets/skeleton_list.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
   final PropertyModel property;
@@ -298,8 +299,9 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     final isDark = theme.brightness == Brightness.dark;
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      body: Stack(
-        children: [
+      body: ResponsiveLayout(
+        child: Stack(
+          children: [
           RefreshIndicator(
             onRefresh: _handleRefresh,
             displacement: 80,
@@ -735,8 +737,6 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           ),
                         ],
                         
-                        const SizedBox(height: 20),
-                        const Center(child: BannerAdWidget()),
                         const SizedBox(height: 100), // Espace pour la barre de contact
                         
                         if (widget.property.amenities.isNotEmpty) ...[
@@ -1164,6 +1164,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -1409,7 +1410,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     return FutureBuilder<List<ReviewModel>>(
       future: _reviewsFuture,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+        if (snapshot.connectionState == ConnectionState.waiting) return const SkeletonList(itemCount: 3, itemHeight: 80);
         if (snapshot.hasError) {
           debugPrint('Erreur d\'affichage des avis: ${snapshot.error}');
           return Text('Erreur: ${snapshot.error}');

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:imobareld/features/admin/admin_controller.dart';
 import 'package:imobareld/features/vehicles/vehicle_controller.dart';
 import 'package:imobareld/models/vehicle_model.dart';
+import 'package:imobareld/core/widgets/skeleton_list.dart';
 import 'package:imobareld/core/widgets/cached_image.dart';
 
 // ── Sous-vue Auto ─────────────────────────────────────────────────────────────
@@ -19,7 +20,7 @@ class AdminAutoSubView extends StatelessWidget {
     return StreamBuilder<List<VehicleModel>>(
       stream: vehicleController.vehiclesByCityStream(city),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+        if (snapshot.connectionState == ConnectionState.waiting) return const SkeletonList(itemCount: 4, itemHeight: 120);
 
         var vehicles = snapshot.data ?? [];
         

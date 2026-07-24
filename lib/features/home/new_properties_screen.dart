@@ -5,6 +5,8 @@ import 'package:imobareld/features/home/widgets/notification_tile.dart';
 import 'package:imobareld/features/auth/auth_controller.dart';
 import 'package:imobareld/features/home/property_detail_screen.dart';
 import 'package:imobareld/models/property_model.dart';
+import 'package:imobareld/core/widgets/skeleton_list.dart';
+import 'package:imobareld/core/widgets/responsive_layout.dart';
 
 class NewPropertiesScreen extends StatelessWidget {
   const NewPropertiesScreen({super.key});
@@ -38,63 +40,65 @@ class NewPropertiesScreen extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: FutureBuilder<List<PropertyModel>>(
-        future: propertyCtrl.getProperties(limit: 50),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          
-          if (snapshot.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Text(
-                  'Erreur lors du chargement des notifications: ${snapshot.error}',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.red),
+      body: ResponsiveLayout(
+        child: FutureBuilder<List<PropertyModel>>(
+          future: propertyCtrl.getProperties(limit: 50),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const SkeletonList(itemCount: 8, itemHeight: 100);
+            }
+            
+            if (snapshot.hasError) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Text(
+                    'Erreur lors du chargement des notifications: ${snapshot.error}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.red),
+                  ),
                 ),
-              ),
-            );
-          }
-
-          final properties = snapshot.data ?? [];
-          if (properties.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.notifications_off_outlined, size: 64, color: theme.disabledColor),
-                  const SizedBox(height: 16),
-                  const Text('Aucune nouvelle notification.'),
-                ],
-              ),
-            );
-          }
-
-          final lastRead = auth.currentUser?.lastReadProperties;
-
-          return ListView.builder(
-            itemCount: properties.length,
-            itemBuilder: (context, index) {
-              final property = properties[index];
-              final isUnread = lastRead == null || property.createdAt.isAfter(lastRead);
-
-              return NotificationTile(
-                property: property,
-                isUnread: isUnread,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => PropertyDetailScreen(property: property),
-                    ),
-                  );
-                },
               );
-            },
-          );
-        },
+            }
+
+            final properties = snapshot.data ?? [];
+            if (properties.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.notifications_off_outlined, size: 64, color: theme.disabledColor),
+                    const SizedBox(height: 16),
+                    const Text('Aucune nouvelle notification.'),
+                  ],
+                ),
+              );
+            }
+
+            final lastRead = auth.currentUser?.lastReadProperties;
+
+            return ListView.builder(
+              itemCount: properties.length,
+              itemBuilder: (context, index) {
+                final property = properties[index];
+                final isUnread = lastRead == null || property.createdAt.isAfter(lastRead);
+
+                return NotificationTile(
+                  property: property,
+                  isUnread: isUnread,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PropertyDetailScreen(property: property),
+                      ),
+                    );
+                  },
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }

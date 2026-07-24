@@ -1,0 +1,347 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:imobareld/core/constants/app_colors.dart';
+import 'package:imobareld/features/auth/auth_controller.dart';
+import 'package:imobareld/core/services/geniuspay_service.dart';
+
+class SubscriptionScreen extends StatefulWidget {
+  const SubscriptionScreen({super.key});
+
+  @override
+  State<SubscriptionScreen> createState() => _SubscriptionScreenState();
+}
+
+class _SubscriptionScreenState extends State<SubscriptionScreen> {
+  int _selectedMonths = 1;
+  bool _isLoading = false;
+  final List<Map<String, dynamic>> _plans = [
+    {'months': 1, 'label': '1 Mois', 'price': 2500},
+    {'months': 3, 'label': '3 Mois', 'price': 7000},
+    {'months': 6, 'label': '6 Mois', 'price': 12500},
+    {'months': 12, 'label': '1 An', 'price': 25000},
+  ];
+
+  Future<void> _processPayment() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final auth = Provider.of<AuthController>(context, listen: false);
+      final user = auth.currentUser;
+      if (user == null) throw Exception("Utilisateur non connecté");
+
+      final planPrice = _plans.firstWhere((p) => p['months'] == _selectedMonths)['price'] as int;
+      final planName = _plans.firstWhere((p) => p['months'] == _selectedMonths)['label'] as String;
+
+      final geniusPay = GeniusPayService();
+      final result = await geniusPay.createCheckoutSession(
+        amount: planPrice,
+        durationDays: _selectedMonths * 30, // Approximation
+        planName: planName,
+        type: 'subscription',
+      );
+
+      if (context.mounted) Navigator.pop(context); // Cacher le chargement principal
+
+      if (result != null) {
+        final String checkoutUrl = result['checkoutUrl']!;
+        final String transactionId = result['transactionId']!;
+
+        await geniusPay.openCheckoutPage(checkoutUrl);
+        
+        if (context.mounted) {
+          _showTransactionStatusDialog(context, transactionId);
+        }
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Erreur: Impossible de générer le lien de paiement.')),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur: $e', style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  void _showTransactionStatusDialog(BuildContext context, String transactionId) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Statut du paiement'),
+          content: StreamBuilder<List<Map<String, dynamic>>>(
+            stream: Supabase.instance.client
+                .from('transactions')
+                .stream(primaryKey: ['id'])
+                .eq('id', transactionId),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Vérification en cours...'),
+                  ],
+                );
+              }
+
+              if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                return const Text('Transaction introuvable.');
+              }
+
+              final data = snapshot.data!.first;
+              final status = data['status'] as String? ?? 'unknown';
+
+              Widget statusIcon;
+              String statusText;
+              bool isCompleted = false;
+
+              switch (status) {
+                case 'created':
+                case 'initiated':
+                  statusIcon = const CircularProgressIndicator();
+                  statusText = 'Paiement initié. Veuillez finaliser sur la page sécurisée...';
+                  break;
+                case 'pending':
+                  statusIcon = const CircularProgressIndicator();
+                  statusText = 'Paiement en attente de confirmation par l\'opérateur...';
+                  break;
+                case 'completed':
+                  isCompleted = true;
+                  statusIcon = const Icon(Icons.check_circle, color: Colors.green, size: 48);
+                  statusText = 'Paiement réussi ! Votre abonnement est maintenant actif.';
+                  break;
+                case 'failed':
+                  statusIcon = const Icon(Icons.error, color: Colors.red, size: 48);
+                  statusText = 'Le paiement a échoué.';
+                  break;
+                case 'cancelled':
+                  statusIcon = const Icon(Icons.cancel, color: Colors.orange, size: 48);
+                  statusText = 'Le paiement a été annulé.';
+                  break;
+                case 'refunded':
+                  statusIcon = const Icon(Icons.money_off, color: Colors.blue, size: 48);
+                  statusText = 'Le paiement a été remboursé.';
+                  break;
+                default:
+                  statusIcon = const Icon(Icons.help, color: Colors.grey, size: 48);
+                  statusText = 'Statut inconnu : $status';
+              }
+
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  statusIcon,
+                  const SizedBox(height: 16),
+                  Text(statusText, textAlign: TextAlign.center),
+                  if (isCompleted) ...[
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () async {
+                        // Rafraîchir l'utilisateur pour débloquer l'UI
+                        final auth = Provider.of<AuthController>(context, listen: false);
+                        await auth.initUser(); // Ou toute autre méthode pour rafraîchir le profil
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        if (context.mounted) Navigator.pop(context); // Retour dashboard
+                      },
+                      child: const Text('Continuer'),
+                    )
+                  ]
+                ],
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+              },
+              child: const Text('Fermer'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final auth = Provider.of<AuthController>(context);
+    final user = auth.currentUser;
+    final totalPrice = _plans.firstWhere((p) => p['months'] == _selectedMonths)['price'] as int;
+    
+    final bool isTrial = user?.subscriptionStatus == 'trial' && user?.trialEndsAt != null && user!.trialEndsAt!.isAfter(DateTime.now());
+
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: AppBar(
+        title: Text('Abonnement', style: TextStyle(color: theme.primaryColor)),
+        centerTitle: true,
+        backgroundColor: theme.appBarTheme.backgroundColor,
+        elevation: 0,
+        iconTheme: IconThemeData(color: theme.primaryColor),
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Icon(Icons.star, size: 64, color: Colors.orange),
+                    const SizedBox(height: 16),
+                    if (isTrial)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 24),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.green),
+                        ),
+                        child: Column(
+                          children: [
+                            const Text(
+                              '🎉 Cadeau de bienvenue !',
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Vous bénéficiez de 6 mois d\'essai gratuit. Votre période d\'essai se termine le ${user!.trialEndsAt!.day.toString().padLeft(2, '0')}/${user.trialEndsAt!.month.toString().padLeft(2, '0')}/${user.trialEndsAt!.year}.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: theme.textTheme.bodyMedium?.color, fontSize: 14),
+                            ),
+                          ],
+                        ),
+                      ),
+                    Text(
+                      'Débloquez tout le potentiel de vos annonces',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: theme.textTheme.titleLarge?.color),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Un abonnement actif vous permet de gérer vos biens, accepter des réservations et communiquer avec les locataires.\n\n🎁 N.B : Tous les propriétaires bénéficient de 6 mois d\'essai gratuit à l\'inscription !',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 16, color: theme.textTheme.bodyMedium?.color),
+                    ),
+                    const SizedBox(height: 32),
+                    Text(
+                      'Choisissez votre forfait :',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: theme.textTheme.titleMedium?.color),
+                    ),
+                    const SizedBox(height: 16),
+                    ..._plans.map((plan) {
+                      final months = plan['months'] as int;
+                      final label = plan['label'] as String;
+                      final planPrice = plan['price'] as int;
+                      final isSelected = _selectedMonths == months;
+                      
+                      final monthlyEquivalent = (planPrice / months).round();
+
+                      return GestureDetector(
+                        onTap: () => setState(() => _selectedMonths = months),
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: isSelected ? theme.primaryColor.withValues(alpha: 0.1) : theme.cardColor,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected ? theme.primaryColor : theme.dividerColor,
+                              width: isSelected ? 2 : 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    label,
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: isSelected ? theme.primaryColor : theme.textTheme.titleLarge?.color,
+                                    ),
+                                  ),
+                                  if (months > 1)
+                                    Text(
+                                      'Soit $monthlyEquivalent FCFA / mois',
+                                      style: TextStyle(fontSize: 12, color: theme.textTheme.bodySmall?.color),
+                                    ),
+                                ],
+                              ),
+                              Text(
+                                '$planPrice FCFA',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.textTheme.titleLarge?.color,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.all(24.0),
+              decoration: BoxDecoration(
+                color: theme.cardColor,
+                boxShadow: const [
+                  BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -5)),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Total à payer :', style: TextStyle(fontSize: 16, color: theme.textTheme.bodyMedium?.color)),
+                      Text('$totalPrice FCFA', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: theme.primaryColor)),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _isLoading ? null : _processPayment,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: theme.primaryColor,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : Text('Payer $totalPrice FCFA', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

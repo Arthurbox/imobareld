@@ -73,6 +73,12 @@ class MockAuthController extends ChangeNotifier implements AuthController {
 
   @override
   bool get isRecoveringPassword => false;
+
+  @override
+  Future<bool> renewSubscription(int months) async => true;
+
+  @override
+  Future<bool> signInWithFacebook({String userType = 'locataire'}) async => true;
 }
 
 class MockPropertyController extends ChangeNotifier implements PropertyController {

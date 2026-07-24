@@ -4,6 +4,7 @@ import 'package:imobareld/features/home/property_controller.dart';
 import 'package:imobareld/models/property_model.dart';
 import 'package:imobareld/core/widgets/property_card.dart';
 import 'package:imobareld/core/widgets/responsive_layout.dart';
+import 'package:imobareld/core/widgets/skeleton_list.dart';
 
 /// Écran des propriétés favorites.
 /// Lit les IDs favoris depuis AuthController (mis à jour en temps réel)
@@ -31,7 +32,7 @@ class FavoritesScreen extends StatelessWidget {
           future: propertyController.getFavoriteProperties(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
+              return const SkeletonList(itemCount: 4, itemHeight: 260);
             }
     
             if (snapshot.hasError) {
@@ -79,15 +80,36 @@ class FavoritesScreen extends StatelessWidget {
               );
             }
     
-            return ListView.builder(
-              padding: const EdgeInsets.all(16),
-              cacheExtent: 1500, // PRÉ-CHARGEMENT pour une fluidité maximale
-              itemCount: properties.length,
-              itemBuilder: (context, index) {
-                return Container(
-                  height: 260,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  child: PropertyCard(property: properties[index]),
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth > 600) {
+                  int crossAxisCount = constraints.maxWidth > 900 ? 3 : 2;
+                  return GridView.builder(
+                    padding: const EdgeInsets.all(16),
+                    cacheExtent: 1500,
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: crossAxisCount,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      mainAxisExtent: 260,
+                    ),
+                    itemCount: properties.length,
+                    itemBuilder: (context, index) {
+                      return PropertyCard(property: properties[index]);
+                    },
+                  );
+                }
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  cacheExtent: 1500, // PRÉ-CHARGEMENT pour une fluidité maximale
+                  itemCount: properties.length,
+                  itemBuilder: (context, index) {
+                    return Container(
+                      height: 260,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      child: PropertyCard(property: properties[index]),
+                    );
+                  },
                 );
               },
             );

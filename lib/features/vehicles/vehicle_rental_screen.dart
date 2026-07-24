@@ -8,6 +8,7 @@ import 'package:imobareld/core/constants/user_roles.dart';
 import 'package:imobareld/core/constants/app_colors.dart';
 import 'package:imobareld/features/vehicles/add_vehicle_screen.dart';
 import 'package:imobareld/features/vehicles/vehicle_detail_screen.dart';
+import 'package:imobareld/core/widgets/skeleton_list.dart';
 
 class VehicleRentalScreen extends StatefulWidget {
   const VehicleRentalScreen({super.key});
@@ -48,7 +49,7 @@ class _VehicleRentalScreenState extends State<VehicleRentalScreen> {
       body: Consumer<VehicleController>(
         builder: (context, vehicleController, _) {
           if (vehicleController.isLoading && vehicleController.vehicles.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
+            return const SkeletonList(itemCount: 4, itemHeight: 200);
           }
           
           final vehicles = vehicleController.vehicles;

@@ -167,27 +167,55 @@ class _PropertySectionState extends State<PropertySection> {
                 }
 
                 final properties = snapshot.data!;
-                return SizedBox(
-                  height: 250,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: properties.length,
-                    itemBuilder: (context, index) {
-                      final screenWidth = MediaQuery.of(context).size.width;
-                      final cardWidth = screenWidth > 600 ? 320.0 : screenWidth * 0.85;
-                      return SizedBox(
-                        width: cardWidth,
-                        child: Padding(
-                          padding: const EdgeInsets.only(right: 16),
-                          child: PropertyCard(
-                            property: properties[index],
-                            onCommentTap: () => widget.onCommentTap(properties[index]),
+                return LayoutBuilder(
+                  builder: (context, constraints) {
+                    if (constraints.maxWidth > 600) {
+                      final displayProperties = properties.take(8).toList();
+                      int crossAxisCount = constraints.maxWidth > 900 ? 4 : 3;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: crossAxisCount,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                            mainAxisExtent: 260,
                           ),
+                          itemCount: displayProperties.length,
+                          itemBuilder: (context, index) {
+                            return PropertyCard(
+                              property: displayProperties[index],
+                              onCommentTap: () => widget.onCommentTap(displayProperties[index]),
+                            );
+                          },
                         ),
                       );
-                    },
-                  ),
+                    }
+                    return SizedBox(
+                      height: 260,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: properties.length,
+                        itemBuilder: (context, index) {
+                          final screenWidth = MediaQuery.of(context).size.width;
+                          final cardWidth = screenWidth > 600 ? 320.0 : screenWidth * 0.85;
+                          return SizedBox(
+                            width: cardWidth,
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 16),
+                              child: PropertyCard(
+                                property: properties[index],
+                                onCommentTap: () => widget.onCommentTap(properties[index]),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  },
                 );
               },
             ),

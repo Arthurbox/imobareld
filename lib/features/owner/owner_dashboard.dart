@@ -18,7 +18,9 @@ import 'package:imobareld/models/vehicle_model.dart';
 import 'package:imobareld/features/vehicles/add_vehicle_screen.dart';
 import 'package:imobareld/features/vehicles/vehicle_detail_screen.dart';
 import 'package:imobareld/features/owner/boost_plans_screen.dart';
+import 'package:imobareld/features/owner/subscription_screen.dart';
 import 'package:imobareld/core/widgets/cached_image.dart';
+import 'package:imobareld/core/widgets/skeleton_list.dart';
 
 
 class OwnerDashboard extends StatefulWidget {
@@ -47,6 +49,52 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
 
     if (auth.currentUser == null) {
       return const Scaffold(body: Center(child: Text('Veuillez vous connecter.')));
+    }
+
+    if (!auth.currentUser!.hasActiveSubscription) {
+      return Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        appBar: AppBar(
+          title: Text('Abonnement requis', style: TextStyle(color: theme.primaryColor)),
+          backgroundColor: theme.appBarTheme.backgroundColor,
+          elevation: 0,
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.lock_clock, size: 80, color: Colors.orange),
+                const SizedBox(height: 24),
+                Text(
+                  'Votre période d\'essai ou abonnement a expiré.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: theme.textTheme.titleLarge?.color),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Pour continuer à gérer vos annonces et recevoir des réservations, veuillez souscrire à un abonnement.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: theme.textTheme.bodyMedium?.color, fontSize: 16),
+                ),
+                const SizedBox(height: 32),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: theme.primaryColor,
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Voir les offres d\'abonnement', style: TextStyle(fontSize: 16, color: Colors.white)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
     }
 
     return Scaffold(
@@ -108,7 +156,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
         stream: propertyController.getPropertiesByOwnerStream(userId),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const SkeletonList(itemCount: 4, itemHeight: 120);
           }
 
           if (snapshot.hasError) {
@@ -245,10 +293,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                     }
 
                     if (vehicleSnapshot.connectionState == ConnectionState.waiting) {
-                      return const SliverToBoxAdapter(child: Center(child: Padding(
-                        padding: EdgeInsets.all(20.0),
-                        child: CircularProgressIndicator(),
-                      )));
+                      return const SliverToBoxAdapter(child: SkeletonList(itemCount: 2, itemHeight: 120));
                     }
                     final vehicles = vehicleSnapshot.data ?? [];
 
@@ -628,7 +673,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
               }
 
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
+                return const SkeletonList(itemCount: 4, itemHeight: 120);
               }
 
               final reservations = snapshot.data ?? [];

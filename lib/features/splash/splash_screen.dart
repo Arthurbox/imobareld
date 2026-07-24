@@ -36,11 +36,11 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _initApp() async {
     final auth = Provider.of<AuthController>(context, listen: false);
-    // On lance l'initialisation et on attend 2 secondes en même temps
+    // On lance l'initialisation et on attend un bref instant en même temps
     // results[0] contiendra le widget de destination retourné par _checkStatus
     final results = await Future.wait([
       _checkStatus(auth),
-      Future.delayed(const Duration(milliseconds: 300)),
+      Future.delayed(const Duration(milliseconds: 150)),
     ]);
 
     final Widget nextScreen = results[0] as Widget;

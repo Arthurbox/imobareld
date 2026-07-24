@@ -8,8 +8,6 @@ import 'package:imobareld/features/vehicles/vehicle_controller.dart';
 import 'package:imobareld/models/vehicle_model.dart';
 import 'package:imobareld/features/auth/auth_controller.dart';
 import 'package:imobareld/core/constants/app_colors.dart';
-import 'package:imobareld/core/services/ad_helper.dart';
-import 'package:imobareld/core/widgets/banner_ad_widget.dart';
 import 'package:imobareld/core/constants/bf_locations.dart';
 
 class AddVehicleScreen extends StatefulWidget {
@@ -245,9 +243,6 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(widget.vehicleToEdit != null ? 'Véhicule modifié !' : 'Véhicule ajouté !')),
         );
-        
-        await AdHelper.showInterstitialAd();
-        
         if (!mounted) return;
         Navigator.pop(context);
       } else {
@@ -462,8 +457,6 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                       alignLabelWithHint: true,
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  const Center(child: BannerAdWidget()),
                   const SizedBox(height: 16),
 
                   SizedBox(

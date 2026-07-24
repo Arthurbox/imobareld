@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:imobareld/features/auth/auth_controller.dart';
 import 'package:imobareld/core/constants/app_colors.dart';
+import 'package:imobareld/core/services/supabase_service.dart';
 
 class VerificationRequestScreen extends StatefulWidget {
   const VerificationRequestScreen({super.key});
@@ -39,11 +40,15 @@ class _VerificationRequestScreenState extends State<VerificationRequestScreen> {
     final navigator = Navigator.of(context);
     final authController = Provider.of<AuthController>(context, listen: false);
     
-    // Convert to Base64
+    // Convert to Bytes and upload to Supabase Storage
     List<int> imageBytes = await _selectedImage!.readAsBytes();
-    String base64Image = base64Encode(imageBytes);
+    final extension = _selectedImage!.path.split('.').last.toLowerCase();
+    final fileName = 'verification_${authController.currentUser?.id}_${DateTime.now().millisecondsSinceEpoch}.$extension';
+    final path = 'profiles/$fileName';
+    
+    final url = await supabaseService.uploadBytes('media', path, imageBytes);
 
-    final success = await authController.submitVerificationRequest([base64Image]);
+    final success = await authController.submitVerificationRequest([url]);
 
     if (!mounted) return;
 
