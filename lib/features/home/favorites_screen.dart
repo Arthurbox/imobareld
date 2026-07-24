@@ -80,15 +80,36 @@ class FavoritesScreen extends StatelessWidget {
               );
             }
     
-            return ListView.builder(
-              padding: const EdgeInsets.all(16),
-              cacheExtent: 1500, // PRÉ-CHARGEMENT pour une fluidité maximale
-              itemCount: properties.length,
-              itemBuilder: (context, index) {
-                return Container(
-                  height: 260,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  child: PropertyCard(property: properties[index]),
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth > 600) {
+                  int crossAxisCount = constraints.maxWidth > 900 ? 3 : 2;
+                  return GridView.builder(
+                    padding: const EdgeInsets.all(16),
+                    cacheExtent: 1500,
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: crossAxisCount,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      mainAxisExtent: 260,
+                    ),
+                    itemCount: properties.length,
+                    itemBuilder: (context, index) {
+                      return PropertyCard(property: properties[index]);
+                    },
+                  );
+                }
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  cacheExtent: 1500, // PRÉ-CHARGEMENT pour une fluidité maximale
+                  itemCount: properties.length,
+                  itemBuilder: (context, index) {
+                    return Container(
+                      height: 260,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      child: PropertyCard(property: properties[index]),
+                    );
+                  },
                 );
               },
             );

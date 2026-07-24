@@ -166,7 +166,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(24.0),
-            child: Form(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 500),
+                child: Form(
               key: _formKey,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -913,9 +916,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
             ),
           ),
+              ),
+            ),
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }

@@ -43,7 +43,7 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
 
-            <!-- Deep Link Filter for App Links and Custom Scheme -->
+            <!-- Deep Link Filter for App Links (HTTPS/HTTP) -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -52,8 +52,14 @@
                 <!-- Support HTTPS (clickable in WhatsApp) -->
                 <data android:scheme="https" android:host="imobareld.app" />
                 <data android:scheme="http" android:host="imobareld.app" />
+            </intent-filter>
+
+            <!-- Support Custom Scheme (imobareldapp://) in a separate intent filter -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
                 
-                <!-- Support Custom Scheme (new) -->
                 <data android:scheme="imobareldapp" />
             </intent-filter>
         </activity>

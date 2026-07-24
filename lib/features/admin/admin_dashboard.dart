@@ -8,6 +8,7 @@ import 'package:imobareld/features/admin/views/admin_users_view.dart';
 import 'package:imobareld/features/admin/views/admin_content_view.dart';
 import 'package:imobareld/features/admin/views/admin_verifications_view.dart';
 import 'package:imobareld/features/admin/views/admin_ads_view.dart';
+import 'package:imobareld/features/admin/views/admin_revenue_view.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -58,6 +59,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
         ],
       ),
+      drawer: _buildAdminDrawer(context, theme),
       body: _views[_currentIndex],
       bottomNavigationBar: FutureBuilder<List<UserModel>>(
         future: Provider.of<AdminController>(context, listen: false).getPendingVerifications(),
@@ -87,6 +89,42 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildAdminDrawer(BuildContext context, ThemeData theme) {
+    return Drawer(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      child: Column(
+        children: [
+          UserAccountsDrawerHeader(
+            decoration: BoxDecoration(color: theme.primaryColor),
+            accountName: const Text('Administrateur', style: TextStyle(fontWeight: FontWeight.bold)),
+            accountEmail: const Text('Panneau de contrôle'),
+            currentAccountPicture: const CircleAvatar(
+              backgroundColor: Colors.white,
+              child: Icon(Icons.admin_panel_settings, color: Colors.blue, size: 30),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.account_balance_wallet, color: Colors.green),
+            title: Text('Revenus & Transactions', style: TextStyle(color: theme.textTheme.bodyLarge?.color, fontWeight: FontWeight.bold)),
+            onTap: () {
+              Navigator.pop(context); // Fermer le drawer
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminRevenueView()));
+            },
+          ),
+          const Divider(),
+          // Espace pour d'autres fonctionnalités d'administration
+          const Spacer(),
+          ListTile(
+            leading: const Icon(Icons.exit_to_app, color: Colors.red),
+            title: const Text('Fermer le menu', style: TextStyle(color: Colors.red)),
+            onTap: () => Navigator.pop(context),
+          ),
+          const SizedBox(height: 20),
+        ],
       ),
     );
   }

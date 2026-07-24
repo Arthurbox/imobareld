@@ -20,6 +20,7 @@ import 'package:imobareld/core/widgets/cached_image.dart';
 import 'package:imobareld/core/widgets/full_screen_image_viewer.dart';
 import 'package:imobareld/core/utils/share_utils.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:imobareld/core/widgets/responsive_layout.dart';
 import 'package:imobareld/core/widgets/skeleton_list.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
@@ -298,8 +299,9 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     final isDark = theme.brightness == Brightness.dark;
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      body: Stack(
-        children: [
+      body: ResponsiveLayout(
+        child: Stack(
+          children: [
           RefreshIndicator(
             onRefresh: _handleRefresh,
             displacement: 80,
@@ -1161,6 +1163,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

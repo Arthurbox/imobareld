@@ -36,6 +36,30 @@ class DeepLinkService {
   void _handleDeepLink(Uri uri, GlobalKey<NavigatorState> navigatorKey) {
     debugPrint('Handling Deep Link: $uri');
     
+    // Gérer le retour de paiement
+    if (uri.scheme == 'imobareldapp' && uri.host == 'payment') {
+      final status = uri.pathSegments.isNotEmpty ? uri.pathSegments.first : '';
+      final context = navigatorKey.currentContext;
+      if (context != null) {
+        if (status == 'return') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('De retour sur l\'application ! Votre paiement est en cours de traitement.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else if (status == 'cancel') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Paiement annulé.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+      return;
+    }
+
     // On supporte https://imobareld.app/property/[id] 
     // ou imobareld://property/[id]
     

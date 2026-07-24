@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:imobareld/core/constants/app_colors.dart';
 import 'package:imobareld/features/auth/auth_controller.dart';
+import 'package:imobareld/core/services/geniuspay_service.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
@@ -21,30 +23,157 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   ];
 
   Future<void> _processPayment() async {
-    setState(() => _isLoading = true);
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const Center(child: CircularProgressIndicator()),
+    );
 
-    // Simulation d'un paiement de quelques secondes
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      final auth = Provider.of<AuthController>(context, listen: false);
+      final user = auth.currentUser;
+      if (user == null) throw Exception("Utilisateur non connecté");
 
-    if (!mounted) return;
+      final planPrice = _plans.firstWhere((p) => p['months'] == _selectedMonths)['price'] as int;
+      final planName = _plans.firstWhere((p) => p['months'] == _selectedMonths)['label'] as String;
 
-    final authController = Provider.of<AuthController>(context, listen: false);
-    final success = await authController.renewSubscription(_selectedMonths);
-
-    setState(() => _isLoading = false);
-
-    if (success) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Abonnement activé avec succès !', style: TextStyle(color: Colors.white)), backgroundColor: Colors.green),
+      final geniusPay = GeniusPayService();
+      final result = await geniusPay.createCheckoutSession(
+        amount: planPrice,
+        durationDays: _selectedMonths * 30, // Approximation
+        planName: planName,
+        type: 'subscription',
       );
-      Navigator.pop(context); // Retour au dashboard qui devrait maintenant être débloqué
-    } else {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(authController.errorMessage ?? 'Erreur lors du renouvellement', style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red),
-      );
+
+      if (context.mounted) Navigator.pop(context); // Cacher le chargement principal
+
+      if (result != null) {
+        final String checkoutUrl = result['checkoutUrl']!;
+        final String transactionId = result['transactionId']!;
+
+        await geniusPay.openCheckoutPage(checkoutUrl);
+        
+        if (context.mounted) {
+          _showTransactionStatusDialog(context, transactionId);
+        }
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Erreur: Impossible de générer le lien de paiement.')),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur: $e', style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red),
+        );
+      }
     }
+  }
+
+  void _showTransactionStatusDialog(BuildContext context, String transactionId) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Statut du paiement'),
+          content: StreamBuilder<List<Map<String, dynamic>>>(
+            stream: Supabase.instance.client
+                .from('transactions')
+                .stream(primaryKey: ['id'])
+                .eq('id', transactionId),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Vérification en cours...'),
+                  ],
+                );
+              }
+
+              if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                return const Text('Transaction introuvable.');
+              }
+
+              final data = snapshot.data!.first;
+              final status = data['status'] as String? ?? 'unknown';
+
+              Widget statusIcon;
+              String statusText;
+              bool isCompleted = false;
+
+              switch (status) {
+                case 'created':
+                case 'initiated':
+                  statusIcon = const CircularProgressIndicator();
+                  statusText = 'Paiement initié. Veuillez finaliser sur la page sécurisée...';
+                  break;
+                case 'pending':
+                  statusIcon = const CircularProgressIndicator();
+                  statusText = 'Paiement en attente de confirmation par l\'opérateur...';
+                  break;
+                case 'completed':
+                  isCompleted = true;
+                  statusIcon = const Icon(Icons.check_circle, color: Colors.green, size: 48);
+                  statusText = 'Paiement réussi ! Votre abonnement est maintenant actif.';
+                  break;
+                case 'failed':
+                  statusIcon = const Icon(Icons.error, color: Colors.red, size: 48);
+                  statusText = 'Le paiement a échoué.';
+                  break;
+                case 'cancelled':
+                  statusIcon = const Icon(Icons.cancel, color: Colors.orange, size: 48);
+                  statusText = 'Le paiement a été annulé.';
+                  break;
+                case 'refunded':
+                  statusIcon = const Icon(Icons.money_off, color: Colors.blue, size: 48);
+                  statusText = 'Le paiement a été remboursé.';
+                  break;
+                default:
+                  statusIcon = const Icon(Icons.help, color: Colors.grey, size: 48);
+                  statusText = 'Statut inconnu : $status';
+              }
+
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  statusIcon,
+                  const SizedBox(height: 16),
+                  Text(statusText, textAlign: TextAlign.center),
+                  if (isCompleted) ...[
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () async {
+                        // Rafraîchir l'utilisateur pour débloquer l'UI
+                        final auth = Provider.of<AuthController>(context, listen: false);
+                        await auth.initUser(); // Ou toute autre méthode pour rafraîchir le profil
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        if (context.mounted) Navigator.pop(context); // Retour dashboard
+                      },
+                      child: const Text('Continuer'),
+                    )
+                  ]
+                ],
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+              },
+              child: const Text('Fermer'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override

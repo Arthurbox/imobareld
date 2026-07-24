@@ -34,7 +34,6 @@ import 'package:imobareld/core/utils/app_logger.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:imobareld/core/services/deep_link_service.dart';
 
-import 'dart:io' show Platform;
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -78,8 +77,19 @@ void main() async {
     );
 
     if (!kIsWeb) {
-      FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+      FlutterError.onError = (FlutterErrorDetails details) {
+        if (details.exceptionAsString().contains('RealtimeSubscribeException')) {
+          debugPrint('Ignored RealtimeSubscribeException in FlutterError');
+          return;
+        }
+        FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+      };
+      
       PlatformDispatcher.instance.onError = (error, stack) {
+        if (error.toString().contains('RealtimeSubscribeException')) {
+          debugPrint('Ignored RealtimeSubscribeException in PlatformDispatcher');
+          return true;
+        }
         FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
         return true;
       };

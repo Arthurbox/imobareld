@@ -343,9 +343,12 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
             children: [
               SingleChildScrollView(
                 padding: const EdgeInsets.all(20),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 800),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text('Photos & Vidéos du bien', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
@@ -747,6 +750,8 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                     ],
                   ),
                 ),
+               ),
+              ),
               ),
               if (propertyCtrl.isLoading)
                 Container(

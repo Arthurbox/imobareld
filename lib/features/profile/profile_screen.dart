@@ -16,6 +16,7 @@ import 'package:imobareld/features/settings/legal_documents_screen.dart';
 import 'package:imobareld/features/settings/faq_screen.dart';
 import 'package:imobareld/features/profile/my_boosts_screen.dart';
 import 'package:imobareld/features/owner/subscription_screen.dart';
+import 'package:imobareld/features/owner/transaction_history_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final bool hideAppBar;
@@ -319,6 +320,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(builder: (_) => const MyBoostsScreen()),
+                            );
+                          },
+                        ),
+                        const Divider(),
+                        ListTile(
+                          leading: const Icon(Icons.receipt_long, color: Colors.indigo),
+                          title: Text('Historique des paiements', style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color)),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const TransactionHistoryScreen()),
                             );
                           },
                         ),

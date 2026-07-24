@@ -185,7 +185,7 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context, auth, _) {
         final user = auth.currentUser;
         return SizedBox(
-          width: kIsWeb ? 350 : MediaQuery.of(context).size.width * 0.75,
+          width: kIsWeb ? 280 : MediaQuery.of(context).size.width * 0.75,
           child: Drawer(
             child: ListView(
               padding: EdgeInsets.zero,
@@ -754,8 +754,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        _buildNavItem(0, Icons.home, 'Accueil'),
-                        _buildNavItem(1, Icons.tune, 'Filtre'),
+                        Expanded(child: _buildNavItem(0, Icons.home, 'Accueil')),
+                        Expanded(child: _buildNavItem(1, Icons.tune, 'Filtre')),
                       ],
                     ),
                   ),
@@ -766,8 +766,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        AnnouncementBadge(child: _buildNavItem(2, Icons.campaign_outlined, 'Annonce')),
-                        _buildNavItem(3, Icons.person_outline, 'Profil'),
+                        Expanded(child: AnnouncementBadge(child: _buildNavItem(2, Icons.campaign_outlined, 'Annonce'))),
+                        Expanded(child: _buildNavItem(3, Icons.person_outline, 'Profil')),
                       ],
                     ),
                   ),
@@ -776,22 +776,22 @@ class _HomeScreenState extends State<HomeScreen> {
             : Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _buildNavItem(0, Icons.home, 'Accueil'),
-                  _buildNavItem(1, Icons.tune, 'Filtre'),
-                  AnnouncementBadge(child: _buildNavItem(2, Icons.campaign_outlined, 'Annonce')),
-                  _buildNavItem(3, Icons.person_outline, 'Profil'),
+                  Expanded(child: _buildNavItem(0, Icons.home, 'Accueil')),
+                  Expanded(child: _buildNavItem(1, Icons.tune, 'Filtre')),
+                  Expanded(child: AnnouncementBadge(child: _buildNavItem(2, Icons.campaign_outlined, 'Annonce'))),
+                  Expanded(child: _buildNavItem(3, Icons.person_outline, 'Profil')),
                 ],
               ),
       ),
     );
   }
 
-
   Widget _buildNavItem(int index, IconData icon, String label) {
     final isSelected = _selectedIndex == index;
     return Tooltip(
       message: label,
       child: MaterialButton(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
         minWidth: 40,
         onPressed: () {
           // Basculer vers l'onglet
@@ -813,9 +813,14 @@ class _HomeScreenState extends State<HomeScreen> {
         },
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 22, color: isSelected ? Theme.of(context).primaryColor : Theme.of(context).textTheme.bodyMedium?.color),
-            Text(label, style: TextStyle(color: isSelected ? Theme.of(context).primaryColor : Theme.of(context).textTheme.bodyMedium?.color, fontSize: 11)),
+            Text(
+              label, 
+              style: TextStyle(color: isSelected ? Theme.of(context).primaryColor : Theme.of(context).textTheme.bodyMedium?.color, fontSize: 11),
+              overflow: TextOverflow.ellipsis,
+            ),
           ],
         ),
       ),
