@@ -65,7 +65,10 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
 
     final position = await Geolocator.getCurrentPosition();
     mapController.animateCamera(
-      CameraUpdate.newLatLng(LatLng(position.latitude, position.longitude)),
+      CameraUpdate.newLatLngZoom(
+        LatLng(position.latitude, position.longitude),
+        18.0, // Zoom plus proche (niveau rue)
+      ),
     );
   }
 
@@ -139,7 +142,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
 
           // 3. Bulle d'information en haut
           Positioned(
-            top: 16.0,
+            top: 4.0,
             left: 16.0,
             right: 16.0,
             child: Container(

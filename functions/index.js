@@ -270,7 +270,7 @@ exports.geniusPayWebhook = onRequest(async (req, res) => {
             const userName = userRecord?.name || data.customer?.name || "Client";
 
             if (userEmail) {
-              const resendApiKey = "re_aZ7zpNyB_MvjVAWaWrthHeWg6SqQBiogS";
+              const resendApiKey = process.env.RESEND_API_KEY;
               
               let subject = "Paiement réussi !";
               let title = "Paiement Validé";
