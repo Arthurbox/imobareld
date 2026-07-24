@@ -74,3 +74,7 @@ ui-debug.log
 *.pem
 *.p12
 secrets/
+
+# Fichiers d'environnement (Sécurité)
+.env
+functions/.env
