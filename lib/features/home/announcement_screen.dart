@@ -389,11 +389,11 @@ class _AnnouncementScreenState extends State<AnnouncementScreen> {
             onTap: _postMessage,
             child: Container(
               padding: const EdgeInsets.all(12),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: AppColors.primaryGradient,
+                color: AppColors.primaryOrange.withValues(alpha: 0.1),
               ),
-              child: const Icon(Icons.send, color: Colors.white, size: 24),
+              child: const Icon(Icons.send, color: AppColors.primaryOrange, size: 24),
             ),
           ),
         ],

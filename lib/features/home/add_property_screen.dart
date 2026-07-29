@@ -739,7 +739,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                         child: ElevatedButton(
                           onPressed: propertyCtrl.isLoading ? null : _submitFormat,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primaryBlue,
+                            backgroundColor: AppColors.primaryOrange,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                           child: propertyCtrl.isLoading 

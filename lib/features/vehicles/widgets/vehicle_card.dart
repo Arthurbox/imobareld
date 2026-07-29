@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:imobareld/core/widgets/cached_image.dart';
+import 'package:imobareld/core/constants/app_colors.dart';
 import 'package:imobareld/models/vehicle_model.dart';
 
 /// VehicleCard affiche les informations essentielles d'un véhicule.
@@ -147,11 +148,11 @@ class _VehicleCardState extends State<VehicleCard> {
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
                                   decoration: BoxDecoration(
-                                    color: Colors.blue,
+                                    color: AppColors.primaryOrange,
                                     borderRadius: BorderRadius.circular(20),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.blue.withValues(alpha: 0.3),
+                                        color: AppColors.primaryOrange.withValues(alpha: 0.3),
                                         blurRadius: 4,
                                         offset: const Offset(0, 2),
                                       )

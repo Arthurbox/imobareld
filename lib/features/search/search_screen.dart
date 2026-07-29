@@ -192,17 +192,10 @@ class SearchScreenState extends State<SearchScreen> {
                           child: Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              gradient: AppColors.primaryGradient,
+                              color: AppColors.primaryOrange.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.primaryBlue.withValues(alpha: 0.3),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
                             ),
-                            child: const Icon(Icons.tune, color: Colors.white),
+                            child: const Icon(Icons.tune, color: AppColors.primaryOrange),
                           ),
                         ),
                         if (_hasActiveFilters)

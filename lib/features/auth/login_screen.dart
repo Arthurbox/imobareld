@@ -422,9 +422,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                   padding: EdgeInsets.zero,
                                 ),
                                 child: Ink(
-                                  // Appliquer le dégradé bleu → orange
+                                  // Appliquer la même couleur que les prix
                                   decoration: BoxDecoration(
-                                    gradient: AppColors.primaryGradient,
+                                    color: AppColors.primaryOrange.withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Container(
@@ -434,7 +434,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       style: TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,
-                                        color: Colors.white,
+                                        color: AppColors.primaryOrange,
                                       ),
                                     ),
                                   ),

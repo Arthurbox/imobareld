@@ -226,20 +226,13 @@ class PropertyCard extends StatelessWidget {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
-                            gradient: AppColors.primaryGradient,
+                            color: theme.colorScheme.secondary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.primaryBlue.withValues(alpha: 0.2),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
                           ),
-                          child: const Text(
+                          child: Text(
                             'Détail',
                             style: TextStyle(
-                              color: Colors.white, 
+                              color: theme.colorScheme.secondary, 
                               fontSize: 10, 
                               fontWeight: FontWeight.bold
                             ),
