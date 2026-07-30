@@ -6,15 +6,27 @@ const { createClient } = require("@supabase/supabase-js");
 admin.initializeApp();
 
 exports.sendChatPush = onRequest(async (req, res) => {
-  // Configurer CORS
-  res.set("Access-Control-Allow-Origin", "*");
-  res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  // Configurer CORS (restreint au domaine officiel)
+  res.set("Access-Control-Allow-Origin", "https://imobareld.app");
+  res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
   // Si c'est une requête de preflight, on s'arrête là et on retourne un petit 204
   if (req.method === "OPTIONS") {
     res.status(204).send("");
     return;
+  }
+
+  // ✅ Vérification du token Firebase Authentication
+  const authHeader = req.headers.authorization || "";
+  const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  if (!idToken) {
+    return res.status(401).send({ success: false, message: "Token d'authentification manquant." });
+  }
+  try {
+    await admin.auth().verifyIdToken(idToken);
+  } catch (e) {
+    return res.status(403).send({ success: false, message: "Token invalide ou expiré." });
   }
 
   // Vérifier qu'on a bien un payload
@@ -72,8 +84,9 @@ exports.sendChatPush = onRequest(async (req, res) => {
 // ==========================================
 // GENIUSPAY INTEGRATION
 // ==========================================
-const GENIUSPAY_API_KEY = "sk_sandbox_C7BuIXV82NdoQyT6EtSTpSZXMaW04Ebu";
-const GENIUSPAY_API_SECRET = "ss_sandbox_3TEVd5FYPPS7zdPiWDbI4sw8acDOjWdHKN00I6PwNWV68hlQ";
+// ✅ Clés sécurisées via variables d'environnement (.env)
+const GENIUSPAY_API_KEY = process.env.GENIUSPAY_API_KEY || "";
+const GENIUSPAY_API_SECRET = process.env.GENIUSPAY_API_SECRET || "";
 const GENIUSPAY_WEBHOOK_SECRET = process.env.GENIUSPAY_WEBHOOK_SECRET || "whsec_sandbox_placeholder";
 
 const SUPABASE_URL = process.env.SUPABASE_URL || "https://placeholder.supabase.co";

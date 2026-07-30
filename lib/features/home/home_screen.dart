@@ -5,6 +5,7 @@ import 'package:imobareld/core/widgets/cached_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:imobareld/core/constants/app_colors.dart';
+import 'package:imobareld/core/constants/user_roles.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:imobareld/features/auth/auth_controller.dart';
@@ -116,9 +117,9 @@ class _HomeScreenState extends State<HomeScreen> {
         bottomNavigationBar: _buildResponsiveBottomNav(context, theme),
         floatingActionButton: Consumer<AuthController>(
           builder: (context, authController, _) {
-            final isOwnerOrAdmin = authController.currentUser != null &&
+            final isProprio = authController.currentUser != null &&
                 authController.currentUser!.isOwner;
-            if (!isOwnerOrAdmin || _selectedIndex != 0)
+            if (!isProprio || _selectedIndex != 0)
               return const SizedBox.shrink();
             return _buildFAB(context);
           },
@@ -161,9 +162,9 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     return Consumer<AuthController>(
       builder: (context, authController, _) {
-        final isOwnerOrAdmin = authController.currentUser != null &&
+        final isProprio = authController.currentUser != null &&
             authController.currentUser!.isOwner;
-        return _buildBottomNav(context, theme, isOwnerOrAdmin);
+        return _buildBottomNav(context, theme, isProprio);
       },
     );
   }
@@ -552,11 +553,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Flexible(
-                    child: ShaderMask(
-                      shaderCallback: (bounds) => AppColors.primaryGradient.createShader(bounds),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryOrange.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       child: Text(
                         userName, 
-                        style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                        style: const TextStyle(color: AppColors.primaryOrange, fontSize: 18, fontWeight: FontWeight.bold),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -733,7 +738,17 @@ class _HomeScreenState extends State<HomeScreen> {
       elevation: 0,
       child: Container(
         width: 60, height: 60,
-        decoration: const BoxDecoration(shape: BoxShape.circle, gradient: AppColors.primaryGradient),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle, 
+          color: AppColors.primaryOrange,
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primaryOrange.withValues(alpha: 0.4),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
         child: const Icon(Icons.add, color: Colors.white, size: 32),
       ),
     );
@@ -776,10 +791,10 @@ class _HomeScreenState extends State<HomeScreen> {
             : Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  Expanded(child: _buildNavItem(0, Icons.home, 'Accueil')),
-                  Expanded(child: _buildNavItem(1, Icons.tune, 'Filtre')),
-                  Expanded(child: AnnouncementBadge(child: _buildNavItem(2, Icons.campaign_outlined, 'Annonce'))),
-                  Expanded(child: _buildNavItem(3, Icons.person_outline, 'Profil')),
+                  Expanded(child: Center(child: _buildNavItem(0, Icons.home, 'Accueil'))),
+                  Expanded(child: Center(child: _buildNavItem(1, Icons.tune, 'Filtre'))),
+                  Expanded(child: Center(child: AnnouncementBadge(child: _buildNavItem(2, Icons.campaign_outlined, 'Annonce')))),
+                  Expanded(child: Center(child: _buildNavItem(3, Icons.person_outline, 'Profil'))),
                 ],
               ),
       ),

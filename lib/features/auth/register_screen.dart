@@ -714,9 +714,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   padding: EdgeInsets.zero,
                                 ),
                                 child: Ink(
-                                  // Appliquer le dégradé bleu → orange
+                                  // Appliquer la même couleur que les prix
                                   decoration: BoxDecoration(
-                                    gradient: AppColors.primaryGradient,
+                                    color: AppColors.primaryOrange.withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Container(
@@ -726,7 +726,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       style: TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,
-                                        color: Colors.white,
+                                        color: AppColors.primaryOrange,
                                       ),
                                     ),
                                   ),

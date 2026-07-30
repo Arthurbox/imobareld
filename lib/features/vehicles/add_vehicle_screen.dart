@@ -464,7 +464,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                     child: ElevatedButton(
                       onPressed: isLoading ? null : _submit,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryBlue,
+                        backgroundColor: AppColors.primaryOrange,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       child: isLoading

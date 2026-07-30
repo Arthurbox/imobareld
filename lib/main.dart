@@ -34,6 +34,8 @@ import 'package:imobareld/core/utils/app_logger.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:imobareld/core/services/deep_link_service.dart';
 
+import 'package:flutter_web_plugins/url_strategy.dart';
+
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -44,6 +46,8 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
+  usePathUrlStrategy();
+  
   appLogger.i('--- CRITICAL APP IDENTITY CHECK ---');
   appLogger.i('PACKAGE_ID: bf.imobareld.app');
 

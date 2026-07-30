@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:imobareld/features/vehicles/vehicle_controller.dart';
-import 'package:imobareld/models/vehicle_model.dart';
 import 'package:imobareld/features/vehicles/widgets/vehicle_card.dart';
 import 'package:imobareld/features/auth/auth_controller.dart';
-import 'package:imobareld/core/constants/user_roles.dart';
 import 'package:imobareld/core/constants/app_colors.dart';
 import 'package:imobareld/features/vehicles/add_vehicle_screen.dart';
 import 'package:imobareld/features/vehicles/vehicle_detail_screen.dart';
@@ -29,11 +27,10 @@ class _VehicleRentalScreenState extends State<VehicleRentalScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final vehicleController = Provider.of<VehicleController>(context);
     final authController = Provider.of<AuthController>(context);
 
-    // Vérifier si l'utilisateur est propriétaire pour afficher le bouton +
-    final isOwner = authController.currentUser?.userType == UserRoles.owner;
+    // Vérifier si l'utilisateur est propriétaire (ou admin) pour afficher le bouton +
+    final isOwner = authController.currentUser?.isOwner ?? false;
 
     return Scaffold(
       appBar: AppBar(

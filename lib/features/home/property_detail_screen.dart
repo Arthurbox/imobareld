@@ -1170,6 +1170,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
 
 
   void _showContactOptions(BuildContext context, String phoneNumber, String name) {
+    const String adminPhone = '+22657428929'; // Numéro imposé pour tous les contacts
 
     showModalBottomSheet(
       context: context,
@@ -1208,7 +1209,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                     Navigator.pop(context);
                     final Uri launchUri = Uri(
                       scheme: 'tel',
-                      path: phoneNumber,
+                      path: adminPhone,
                     );
                     try {
                       if (await canLaunchUrl(launchUri)) {
@@ -1238,7 +1239,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                   onTap: () async {
                     final messenger = ScaffoldMessenger.of(context);
                     Navigator.pop(context);
-                    final cleanNumber = phoneNumber.replaceAll(RegExp(r'[^\d+]'), ''); 
+                    final cleanNumber = adminPhone.replaceAll(RegExp(r'[^\d+]'), ''); 
                     final Uri whatsappUri = Uri.parse('https://wa.me/$cleanNumber');
                     
                     try {

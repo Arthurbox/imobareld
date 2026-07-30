@@ -55,17 +55,26 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<Widget> _checkStatus(AuthController auth) async {
-    final prefs = await SharedPreferences.getInstance();
-    final bool isCompleted = prefs.getBool('onboarding_completed') ?? false;
+    bool isCompleted = false;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      isCompleted = prefs.getBool('onboarding_completed') ?? false;
+    } catch (e) {
+      debugPrint('⚠️ Erreur SharedPreferences (in-app browser restrictif) : $e');
+      // Par défaut, si localStorage est bloqué, on passe outre l'onboarding pour afficher le login
+      isCompleted = true;
+    }
 
     if (!isCompleted) {
       return const OnboardingScreen();
     }
 
     // 🔑 Forcer une vérification fraîche de la connectivité AVANT initUser().
-    // Sans ça, ConnectivityService._isOnline vaut 'true' par défaut au démarrage,
-    // même quand l'appareil est hors ligne — ce qui provoque un appel Supabase inutile.
-    await ConnectivityService().checkConnection();
+    try {
+      await ConnectivityService().checkConnection();
+    } catch (e) {
+      debugPrint('⚠️ Erreur lors de la vérification de connexion : $e');
+    }
 
     // Vérifier si Supabase a une session active (Supabase gère son propre stockage)
     try {
