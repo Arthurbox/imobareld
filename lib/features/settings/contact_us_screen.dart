@@ -111,9 +111,9 @@ class ContactUsScreen extends StatelessWidget {
                 context,
                 icon: Icons.message, // Ou une icone WhatsApp si disponible via un package tierce, sinon message
                 title: 'WhatsApp',
-                content: '63 45 71 14',
+                content: '57 42 89 29',
                 color: const Color(0xFF25D366),
-                onTap: () => _openWhatsApp('63457114'),
+                onTap: () => _openWhatsApp('57428929'),
               ),
 
               const SizedBox(height: 16),

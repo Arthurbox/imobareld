@@ -641,15 +641,28 @@ class AuthController extends ChangeNotifier {
     String? phone,
   }) async {
     try {
+      // Vérifier si le profil existe déjà et son type de compte
+      final existingProfile = await supabaseService.client
+          .from('profiles')
+          .select('id, user_type')
+          .eq('id', id)
+          .maybeSingle();
+
+      final existingType = existingProfile?['user_type'];
+      final bool hasExistingType = existingType != null && existingType.toString().isNotEmpty;
+
       // 1. Mettre à jour les métadonnées auth.users (ça peut déclencher un trigger)
       try {
+        final Map<String, dynamic> metadata = {
+          'name': name,
+        };
+        if (!hasExistingType) {
+          metadata['user_type'] = userType;
+          metadata['userType'] = userType;
+        }
         await supabaseService.client.auth.updateUser(
           sb.UserAttributes(
-            data: {
-              'user_type': userType,
-              'userType': userType,
-              'name': name,
-            }
+            data: metadata,
           )
         );
       } catch (e) {
@@ -660,28 +673,23 @@ class AuthController extends ChangeNotifier {
       final Map<String, dynamic> updateData = {
         'user_name': name,
         'email': email,
-        'user_type': userType,
         'updated_at': DateTime.now().toIso8601String(),
       };
+      
+      if (!hasExistingType) {
+        updateData['user_type'] = userType;
+        // Si c'est un propriétaire, on initialise l'abonnement en essai de 6 mois
+        if (userType == 'propriétaire') {
+          updateData['subscription_status'] = 'trial';
+          updateData['trial_ends_at'] = DateTime.now().add(const Duration(days: 180)).toIso8601String();
+        }
+      }
       
       if (phone != null && phone.isNotEmpty) {
         updateData['phone'] = phone;
       }
 
-      // Si c'est un propriétaire, on initialise l'abonnement en essai de 6 mois
-      if (userType == 'propriétaire') {
-        updateData['subscription_status'] = 'trial';
-        updateData['trial_ends_at'] = DateTime.now().add(const Duration(days: 180)).toIso8601String();
-      }
-
-      // 3. Mise à jour directe (Update) de la table. 
-      // Si la ligne n'existe pas, on tente un insert ensuite.
-      final existingProfile = await supabaseService.client
-          .from('profiles')
-          .select('id')
-          .eq('id', id)
-          .maybeSingle();
-
+      // 3. Mise à jour ou insertion directe
       if (existingProfile != null) {
         await supabaseService.client.from('profiles').update(updateData).eq('id', id);
       } else {

@@ -118,7 +118,7 @@ class _HomeScreenState extends State<HomeScreen> {
         floatingActionButton: Consumer<AuthController>(
           builder: (context, authController, _) {
             final isProprio = authController.currentUser != null &&
-                authController.currentUser!.userType == UserRoles.owner;
+                authController.currentUser!.isOwner;
             if (!isProprio || _selectedIndex != 0)
               return const SizedBox.shrink();
             return _buildFAB(context);
@@ -163,7 +163,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Consumer<AuthController>(
       builder: (context, authController, _) {
         final isProprio = authController.currentUser != null &&
-            authController.currentUser!.userType == UserRoles.owner;
+            authController.currentUser!.isOwner;
         return _buildBottomNav(context, theme, isProprio);
       },
     );
