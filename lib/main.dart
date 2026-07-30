@@ -21,9 +21,7 @@ import 'package:imobareld/features/owner/owner_dashboard.dart';
 import 'package:imobareld/features/home/announcement_controller.dart';
 import 'package:imobareld/features/admin/admin_controller.dart';
 import 'package:imobareld/features/home/ad_controller.dart';
-import 'package:imobareld/features/vehicles/vehicle_controller.dart';
-import 'package:imobareld/features/services/delivery_controller.dart';
-import 'package:imobareld/features/vehicles/rental_controller.dart';
+
 import 'package:imobareld/features/home/realisation_controller.dart';
 
 import 'package:imobareld/core/services/connectivity_service.dart';
@@ -202,9 +200,7 @@ class ImobareldApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AnnouncementController()),
         ChangeNotifierProvider(create: (_) => AdminController()),
         ChangeNotifierProvider(create: (_) => AdController()),
-        ChangeNotifierProvider(create: (_) => VehicleController()),
-        ChangeNotifierProvider(create: (_) => DeliveryController()),
-        ChangeNotifierProvider(create: (_) => RentalController()),
+
         ChangeNotifierProvider(create: (_) => RealisationController()),
         ChangeNotifierProvider(create: (_) => ConnectivityService()),
         ChangeNotifierProvider(create: (_) => SyncService()),

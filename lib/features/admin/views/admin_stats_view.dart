@@ -45,12 +45,7 @@ class AdminStatsView extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 _buildStatCard(context, 'Annonces Immotes', stats['totalProperties']?.toString() ?? '0', Icons.apartment, Colors.purple),
-                const SizedBox(height: 10),
-                _buildStatCard(context, 'Annonces Véhicules', stats['totalVehicles']?.toString() ?? '0', Icons.directions_car, Colors.blueGrey),
-                const SizedBox(height: 10),
-                _buildStatCard(context, 'Demandes Livraison', stats['totalDeliveryRequests']?.toString() ?? '0', Icons.local_shipping, Colors.teal),
-                const SizedBox(height: 10),
-                _buildStatCard(context, 'Réservations Véhicules', stats['totalReservations']?.toString() ?? '0', Icons.event_available, Colors.indigo),
+
                 const SizedBox(height: 10),
                 GestureDetector(
                   onTap: () => Navigator.push(

@@ -10,13 +10,6 @@ import 'package:imobareld/models/property_model.dart';
 import 'package:imobareld/features/home/add_property_screen.dart';
 import 'package:imobareld/features/chat/chat_list_screen.dart';
 import 'package:imobareld/features/owner/verification_request_screen.dart';
-import 'package:imobareld/features/vehicles/rental_controller.dart';
-import 'package:imobareld/features/vehicles/widgets/reservation_card.dart';
-import 'package:imobareld/models/reservation_model.dart';
-import 'package:imobareld/features/vehicles/vehicle_controller.dart';
-import 'package:imobareld/models/vehicle_model.dart';
-import 'package:imobareld/features/vehicles/add_vehicle_screen.dart';
-import 'package:imobareld/features/vehicles/vehicle_detail_screen.dart';
 import 'package:imobareld/features/owner/boost_plans_screen.dart';
 import 'package:imobareld/features/owner/subscription_screen.dart';
 import 'package:imobareld/core/widgets/cached_image.dart';
@@ -107,7 +100,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
         actions: _currentIndex == 0 ? [
           IconButton(
             icon: Icon(Icons.add, color: theme.primaryColor),
-            onPressed: () => _showAddOptions(context),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddPropertyScreen())),
           ),
         ] : [],
       ),
@@ -125,10 +118,6 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
             label: 'Tableau de Bord',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.directions_car),
-            label: 'Réservations',
-          ),
-          BottomNavigationBarItem(
             icon: Icon(Icons.chat),
             label: 'Messages',
           ),
@@ -142,8 +131,6 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
       case 0:
         return _buildDashboardView(userId, propertyController);
       case 1:
-        return _buildReservationsView(userId);
-      case 2:
         return const ChatListContent();
       default:
         return const SizedBox.shrink();
@@ -203,18 +190,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                           Icons.home,
                           theme.primaryColor,
                         ),
-                        const SizedBox(width: 12),
-                        FutureBuilder<List<VehicleModel>>(
-                          future: Provider.of<VehicleController>(context, listen: false).getVehiclesByOwner(userId),
-                          builder: (context, vSnap) {
-                            return _buildStatCard(
-                              'Véhicules',
-                              (vSnap.data?.length ?? 0).toString(),
-                              Icons.directions_car,
-                              AppColors.primaryOrange,
-                            );
-                          }
-                        ),
+
                       ],
                     ),
                   ),
@@ -252,75 +228,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                     ),
                   ),
 
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-                    child: Text(
-                      'Mes Véhicules',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: theme.textTheme.titleLarge?.color),
-                    ),
-                  ),
-                ),
 
-                FutureBuilder<List<VehicleModel>>(
-                  future: Provider.of<VehicleController>(context, listen: false).getVehiclesByOwner(userId),
-                  builder: (context, vehicleSnapshot) {
-                    if (vehicleSnapshot.hasError) {
-                      return SliverToBoxAdapter(
-                        child: Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              children: [
-                                const Icon(Icons.error_outline, color: Colors.red, size: 40),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Erreur de synchronisation : ${vehicleSnapshot.error}',
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(color: Colors.red, fontSize: 12),
-                                ),
-                                if (vehicleSnapshot.error.toString().contains('index'))
-                                  const Text(
-                                    'L\'index Firestore est probablement en cours de création. Veuillez patienter quelques minutes.',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(color: Colors.grey, fontSize: 11),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    }
-
-                    if (vehicleSnapshot.connectionState == ConnectionState.waiting) {
-                      return const SliverToBoxAdapter(child: SkeletonList(itemCount: 2, itemHeight: 120));
-                    }
-                    final vehicles = vehicleSnapshot.data ?? [];
-
-                    if (vehicles.isEmpty) {
-                      return SliverToBoxAdapter(
-                        child: Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(32.0),
-                            child: Text('Aucun véhicule publié.', style: TextStyle(color: theme.textTheme.bodyMedium?.color)),
-                          ),
-                        ),
-                      );
-                    }
-
-                    return SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: _buildVehicleManagementCard(context, vehicles[index]),
-                          );
-                        },
-                        childCount: vehicles.length,
-                      ),
-                    );
-                  },
-                ),
                 const SliverToBoxAdapter(child: SizedBox(height: 32)),
               ],
             ),
@@ -351,44 +259,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
     );
   }
 
-  void _showAddOptions(BuildContext context) {
-    final theme = Theme.of(context);
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-             Text(
-              'Que souhaitez-vous ajouter ?',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: theme.textTheme.titleLarge?.color),
-            ),
-            const SizedBox(height: 16),
-            ListTile(
-              leading: Icon(Icons.home_work, color: theme.primaryColor),
-              title: Text('Une Propriété (Appartement, Villa, Bureau...)', style: TextStyle(color: theme.textTheme.bodyLarge?.color)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const AddPropertyScreen()));
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.directions_car, color: theme.primaryColor),
-              title: Text('Un Véhicule (Voiture, Moto, Utilitaire...)', style: TextStyle(color: theme.textTheme.bodyLarge?.color)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const AddVehicleScreen()));
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+
 
   Widget _buildPropertyManagementCard(BuildContext context, PropertyModel property, PropertyController controller) {
     final theme = Theme.of(context);
@@ -414,17 +285,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
     );
   }
 
-  Widget _buildVehicleManagementCard(BuildContext context, VehicleModel vehicle) {
-    return _buildManagementTile(
-      context,
-      title: '${vehicle.companyName} ${vehicle.model}',
-      subtitle: '${vehicle.pricePerDay.round()} FCFA/jour',
-      imageWidget: vehicle.imageUrl.isNotEmpty ? _buildPreviewImage(vehicle.imageUrl) : null,
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VehicleDetailScreen(vehicle: vehicle))),
-      onEdit: () => Navigator.push(context, MaterialPageRoute(builder: (_) => AddVehicleScreen(vehicleToEdit: vehicle))),
-      onDelete: () => _confirmDeleteVehicle(context, vehicle),
-    );
-  }
+
 
   Widget _buildManagementTile(
     BuildContext context, {
@@ -499,15 +360,6 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
     );
   }
 
-  void _confirmDeleteVehicle(BuildContext context, VehicleModel vehicle) {
-    _showDeleteDialog(
-      context,
-      onDelete: () async {
-        final vehicleCtrl = Provider.of<VehicleController>(context, listen: false);
-        await vehicleCtrl.deleteVehicle(vehicle.id);
-      },
-    );
-  }
 
   void _showDeleteDialog(BuildContext context, {required Future<void> Function() onDelete}) {
     showDialog(
@@ -642,67 +494,4 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
     );
   }
 
-  Widget _buildReservationsView(String userId) {
-    final theme = Theme.of(context);
-    return Consumer<RentalController>(
-      builder: (context, rentalController, _) {
-        return RefreshIndicator(
-          onRefresh: _handleRefresh,
-          displacement: 20,
-          color: theme.primaryColor,
-          child: FutureBuilder<List<ReservationModel>>(
-            future: rentalController.getOwnerReservations(userId),
-            builder: (context, snapshot) {
-              if (snapshot.hasError) {
-                return ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  children: [
-                    const SizedBox(height: 100),
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Text(
-                          'Erreur lors du chargement des réservations : ${snapshot.error}',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: Colors.red),
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              }
-
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const SkeletonList(itemCount: 4, itemHeight: 120);
-              }
-
-              final reservations = snapshot.data ?? [];
-
-              if (reservations.isEmpty) {
-                return ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  children: [
-                    const SizedBox(height: 100),
-                    Center(
-                      child: Text('Aucune demande de location de véhicule.', style: TextStyle(color: theme.textTheme.bodyMedium?.color)),
-                    ),
-                  ],
-                );
-              }
-
-              return ListView.builder(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(16),
-                itemCount: reservations.length,
-                itemBuilder: (context, index) {
-                  return ReservationCard(reservation: reservations[index]);
-                },
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
 }
-

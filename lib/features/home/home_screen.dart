@@ -29,7 +29,6 @@ import 'package:imobareld/core/services/connectivity_service.dart';
 import 'package:imobareld/features/settings/legal_documents_screen.dart';
 import 'package:imobareld/features/settings/about_us_screen.dart';
 import 'package:imobareld/features/settings/contact_us_screen.dart';
-import 'package:imobareld/features/vehicles/vehicle_rental_screen.dart';
 import 'package:imobareld/features/owner/boost_plans_screen.dart';
 import 'package:imobareld/features/home/widgets/property_section.dart';
 import 'package:imobareld/features/home/widgets/notification_badge.dart';
@@ -37,7 +36,7 @@ import 'package:imobareld/features/home/widgets/announcement_badge.dart';
 import 'package:imobareld/features/home/widgets/banner_carousel.dart';
 import 'package:imobareld/features/home/widgets/category_scroll_bar.dart';
 import 'package:imobareld/features/home/new_properties_screen.dart';
-import 'package:imobareld/features/services/delivery_screen.dart';
+
 import 'package:imobareld/core/constants/bf_locations.dart';
 import 'package:imobareld/core/widgets/responsive_layout.dart';
 import 'package:imobareld/features/home/widgets/realisation_section.dart';
@@ -264,14 +263,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
                   }),
 
-                _buildDrawerItem(Icons.directions_car_outlined, 'Location de véhicule', () {
-                  Navigator.pop(context);
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const VehicleRentalScreen()));
-                }),
-                _buildDrawerItem(Icons.delivery_dining_outlined, 'Services de livraison', () {
-                  Navigator.pop(context);
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const DeliveryScreen()));
-                }),
+
                 _buildDrawerItem(Icons.description_outlined, 'Conditions Générales', () {
                   Navigator.pop(context);
                   Navigator.push(context, MaterialPageRoute(builder: (_) => LegalDocumentsScreen(isTermsOfService: true)));
@@ -431,28 +423,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     extended: MediaQuery.of(context).size.width > 1100,
                   ),
-                _buildRailTrailingItem(
-                  context,
-                  Icons.directions_car_outlined,
-                  'Véhicules',
-                  () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const VehicleRentalScreen()),
-                  ),
-                  extended: MediaQuery.of(context).size.width > 1100,
-                ),
-                _buildRailTrailingItem(
-                  context,
-                  Icons.delivery_dining_outlined,
-                  'Livraisons',
-                  () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const DeliveryScreen()),
-                  ),
-                  extended: MediaQuery.of(context).size.width > 1100,
-                ),
+
                 if (isAdmin)
                   _buildRailTrailingItem(
                     context,

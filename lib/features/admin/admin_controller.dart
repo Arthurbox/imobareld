@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:imobareld/models/user_model.dart';
 import 'package:imobareld/models/property_model.dart';
-import 'package:imobareld/models/delivery_request_model.dart';
+
 import 'package:imobareld/core/services/supabase_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 import 'package:imobareld/core/constants/user_roles.dart';
@@ -36,7 +36,7 @@ class AdminController with ChangeNotifier {
     getStats().then((s) => _statsController.add(s));
 
     // Écouter les changements sur les tables clés
-    final tables = ['profiles', 'properties', 'vehicles', 'delivery_requests'];
+    final tables = ['profiles', 'properties'];
     
     for (var table in tables) {
       final channel = supabaseService.client.channel('public:$table-stats');
@@ -90,20 +90,11 @@ class AdminController with ChangeNotifier {
     });
   }
 
-  /// Flux de TOUTES les demandes de livraison (pour gestion admin)
-  Stream<List<DeliveryRequest>> get deliveryRequestsStream {
-    return supabaseService.client
-        .from('delivery_requests')
-        .stream(primaryKey: ['id'])
-        .order('created_at', ascending: false)
-        .map((list) => list.map((d) => DeliveryRequest.fromMap(d, d['id'].toString())).toList());
-  }
+
   
   // 1. STATS (Supabase Count)
   Future<Map<String, int>> getStats() async {
     try {
-      // On lance plusieurs comptages en parallèle pour gagner du temps
-      // Utilisation de .count() qui renvoie une PostgrestResponse contenant le nombre de lignes
       final results = await Future.wait([
         supabaseService.client.from('profiles').select('id').count(sb.CountOption.exact),
         supabaseService.client.from('profiles').select('id').eq('user_type', UserRoles.owner).count(sb.CountOption.exact),
@@ -111,12 +102,9 @@ class AdminController with ChangeNotifier {
         supabaseService.client.from('profiles').select('id').eq('verification_status', 'verified').count(sb.CountOption.exact),
         supabaseService.client.from('profiles').select('id').eq('verification_status', 'pending').count(sb.CountOption.exact),
         supabaseService.client.from('properties').select('id').count(sb.CountOption.exact),
-        supabaseService.client.from('vehicles').select('id').count(sb.CountOption.exact),
-        supabaseService.client.from('delivery_requests').select('id').count(sb.CountOption.exact),
         supabaseService.client.from('properties').select('id').eq('is_boosted', true).count(sb.CountOption.exact),
       ]);
       
-      // Dans Supabase 2.x, results[i] est une PostgrestResponse
       return {
         'totalUsers': results[0].count,
         'owners': results[1].count,
@@ -124,9 +112,7 @@ class AdminController with ChangeNotifier {
         'verified': results[3].count,
         'pending': results[4].count,
         'totalProperties': results[5].count,
-        'totalVehicles': results[6].count,
-        'totalDeliveryRequests': results[7].count,
-        'totalBoostedProperties': results[8].count,
+        'totalBoostedProperties': results[6].count,
       };
     } catch (e) {
       debugPrint('🚨 Erreur admin stats Supabase: $e');
@@ -282,63 +268,8 @@ class AdminController with ChangeNotifier {
     }
   }
 
-  // 8. SUPPRESSION VÉHICULE (ADMIN)
-  Future<void> deleteVehicleAdmin(String vehicleId) async {
-    try {
-      _pendingDeletions.add(vehicleId);
-      notifyListeners();
 
-      await supabaseService.client.from('vehicles').delete().eq('id', vehicleId);
-    } catch (e) {
-      debugPrint('🚨 Erreur suppression véhicule admin Supabase: $e');
-      rethrow;
-    } finally {
-      _pendingDeletions.remove(vehicleId);
-      notifyListeners();
-    }
-  }
 
-  // 9. LIVRAISONS (ADMIN)
-  Future<List<DeliveryRequest>> getDeliveryRequests() async {
-    try {
-      final response = await supabaseService.client
-          .from('delivery_requests')
-          .select()
-          .order('created_at', ascending: false);
-          
-      return (response as List).map((d) => DeliveryRequest.fromMap(d, d['id'].toString())).toList();
-    } catch (e) {
-      debugPrint('🚨 Erreur fetching delivery requests Supabase: $e');
-    }
-    return [];
-  }
-
-  Future<void> updateDeliveryStatus(String requestId, String newStatus) async {
-    try {
-      await supabaseService.client.from('delivery_requests').update({
-        'status': newStatus,
-      }).eq('id', requestId);
-      notifyListeners();
-    } catch (e) {
-      debugPrint('🚨 Erreur mise à jour statut livraison Supabase: $e');
-      rethrow;
-    }
-  }
-
-  Future<void> deleteDeliveryRequest(String requestId) async {
-    try {
-      _pendingDeletions.add(requestId);
-      notifyListeners();
-
-      await supabaseService.client.from('delivery_requests').delete().eq('id', requestId);
-    } catch (e) {
-      debugPrint('🚨 Erreur suppression livraison Supabase: $e');
-      rethrow;
-    } finally {
-      _pendingDeletions.remove(requestId);
-      notifyListeners();
-    }
-  }
 
   // 10. CHATS (ADMIN)
   Future<List<Map<String, dynamic>>> getAllConversationsAdmin() async {

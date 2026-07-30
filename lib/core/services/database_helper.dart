@@ -1,7 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:imobareld/models/property_model.dart';
-import 'package:imobareld/models/vehicle_model.dart';
+
 import 'package:imobareld/models/ad_model.dart';
 import 'package:imobareld/models/realisation_model.dart';
 import 'dart:convert';
@@ -487,105 +487,6 @@ class DatabaseHelper {
     await db.delete('ads');
   }
 
-  // --- MÉTHODES POUR LES VÉHICULES ---
-
-  /// Insère ou met à jour un véhicule en cache
-  Future<void> upsertVehicle(VehicleModel vehicle) async {
-    if (kIsWeb) return;
-    final db = await database;
-    if (db == null) return;
-    final now = DateTime.now().toIso8601String();
-
-    await db.insert(
-      'vehicles',
-      {
-        'id': vehicle.id,
-        'ownerId': vehicle.ownerId,
-        'companyName': vehicle.companyName,
-        'model': vehicle.model,
-        'city': vehicle.city,
-        'pricePerDay': vehicle.pricePerDay,
-        'images': jsonEncode(vehicle.images),
-        'description': vehicle.description,
-        'videoUrls': jsonEncode(vehicle.videoUrls),
-        'createdAt': vehicle.createdAt.toIso8601String(),
-        'lastSyncedAt': now,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
-  }
-
-  /// Récupère tous les véhicules en cache
-  Future<List<VehicleModel>> getAllVehicles() async {
-    if (kIsWeb) return [];
-    final db = await database;
-    if (db == null) return [];
-    final List<Map<String, dynamic>> maps = await db.query(
-      'vehicles',
-      orderBy: 'createdAt DESC',
-    );
-
-    return maps.map((map) => _vehicleFromMap(map)).toList();
-  }
-
-  /// Récupère les véhicules par ville
-  Future<List<VehicleModel>> getVehiclesByCity(String city) async {
-    if (kIsWeb) return [];
-    final db = await database;
-    if (db == null) return [];
-    final List<Map<String, dynamic>> maps = await db.query(
-      'vehicles',
-      where: 'city = ?',
-      whereArgs: [city],
-      orderBy: 'createdAt DESC',
-    );
-
-    return maps.map((map) => _vehicleFromMap(map)).toList();
-  }
-
-  /// Récupère un véhicule par ID
-  Future<VehicleModel?> getVehicleById(String id) async {
-    if (kIsWeb) return null;
-    final db = await database;
-    if (db == null) return null;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'vehicles',
-      where: 'id = ?',
-      whereArgs: [id],
-      limit: 1,
-    );
-
-    if (maps.isEmpty) return null;
-    return _vehicleFromMap(maps.first);
-  }
-
-  /// Supprime un véhicule du cache
-  Future<void> deleteVehicle(String id) async {
-    if (kIsWeb) return;
-    final db = await database;
-    if (db == null) return;
-    await db.delete(
-      'vehicles',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-  }
-
-  /// Convertit une map de la DB en VehicleModel
-  VehicleModel _vehicleFromMap(Map<String, dynamic> map) {
-    return VehicleModel(
-      id: map['id'],
-      ownerId: map['ownerId'],
-      companyName: map['companyName'],
-      model: map['model'],
-      city: map['city'],
-      pricePerDay: map['pricePerDay'],
-      images: List<String>.from(jsonDecode(map['images'])),
-      description: map['description'],
-      videoUrls: map['videoUrls'] != null ? List<String>.from(jsonDecode(map['videoUrls'])) : [],
-      createdAt: DateTime.parse(map['createdAt']),
-    );
-  }
 
   // --- MÉTHODES POUR LES RÉALISATIONS ---
 

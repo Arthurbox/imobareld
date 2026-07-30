@@ -68,7 +68,7 @@ class DeepLinkService {
     String? id;
 
     if (pathSegments.length >= 2) {
-      type = pathSegments[0]; // property ou vehicle
+      type = pathSegments[0]; // property
       id = pathSegments[1];   // l'UUID
     } else if (uri.scheme == 'imobareld') {
       // Cas du schéma personnalisé imobareld://property/[id]
@@ -79,7 +79,7 @@ class DeepLinkService {
     }
 
     if (type != null && id != null) {
-      if (type == 'property' || type == 'vehicle') {
+      if (type == 'property') {
         navigatorKey.currentState?.push(
           MaterialPageRoute(
             builder: (_) => DeepLinkLoader(type: type!, id: id!),
