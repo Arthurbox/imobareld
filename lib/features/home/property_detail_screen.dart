@@ -1257,6 +1257,37 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                     }
                   },
                 ),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.sms, color: Colors.orange),
+                  ),
+                  title: const Text('Envoyer un SMS'),
+                  onTap: () async {
+                    final messenger = ScaffoldMessenger.of(context);
+                    Navigator.pop(context);
+                    final cleanNumber = adminPhone.replaceAll(RegExp(r'[^\d+]'), '');
+                    final Uri smsUri = Uri(scheme: 'sms', path: cleanNumber);
+                    
+                    try {
+                      if (await canLaunchUrl(smsUri)) {
+                        await launchUrl(smsUri);
+                      } else {
+                         throw 'Impossible';
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        messenger.showSnackBar(
+                          const SnackBar(content: Text('Impossible de lancer l\'application SMS.')),
+                        );
+                      }
+                    }
+                  },
+                ),
                 const SizedBox(height: 10),
                 TextButton(
                   onPressed: () => Navigator.pop(context),

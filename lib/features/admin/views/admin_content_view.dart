@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:imobareld/core/constants/bf_locations.dart';
 import 'package:imobareld/features/admin/views/content/admin_immo_sub_view.dart';
-import 'package:imobareld/features/admin/views/content/admin_auto_sub_view.dart';
-import 'package:imobareld/features/admin/views/content/admin_reservation_sub_view.dart';
-import 'package:imobareld/features/admin/views/content/admin_livraison_sub_view.dart';
 
-// ===== VUE FUSIONNÉE : IMMOBILIER / AUTO / LIVRAISON =====
+
+// ===== VUE ADMIN : IMMOBILIER =====
 class AdminContentView extends StatefulWidget {
   const AdminContentView({super.key});
 
@@ -14,17 +12,14 @@ class AdminContentView extends StatefulWidget {
 }
 
 class _AdminContentViewState extends State<AdminContentView> {
-  // 0 = Immobilier, 1 = Auto, 2 = Livraison
+  // 0 = Immobilier
   int _subIndex = 0;
   String _selectedCity = 'Ouagadougou';
   late PageController _pageController;
 
-  static const List<String> _subLabels = ['Immobilier', 'Auto', 'Réservations', 'Livraison'];
+  static const List<String> _subLabels = ['Immobilier'];
   static const List<IconData> _subIcons = [
     Icons.apartment,
-    Icons.directions_car,
-    Icons.event_note,
-    Icons.local_shipping,
   ];
   bool _filterVideosOnly = false;
 
@@ -193,9 +188,6 @@ class _AdminContentViewState extends State<AdminContentView> {
             },
             children: [
               AdminImmoSubView(city: _selectedCity, filterVideosOnly: _filterVideosOnly),
-              AdminAutoSubView(city: _selectedCity),
-              AdminReservationSubView(city: _selectedCity),
-              AdminLivraisonSubView(city: _selectedCity),
             ],
           ),
         ),
