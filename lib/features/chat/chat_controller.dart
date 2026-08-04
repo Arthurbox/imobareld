@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:imobareld/core/services/supabase_service.dart';
 import 'package:imobareld/models/message_model.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -23,42 +22,41 @@ class ChatController extends ChangeNotifier {
     _currentChatMessages.clear();
   }
 
-  /// Récupère la liste des conversations de l'utilisateur actuel via Supabase
+  /// Récupère la liste des conversations via une fonction RPC Supabase (Optimisé pour la production)
   Future<List<Map<String, dynamic>>> getConversations() async {
     try {
       final userId = supabaseService.client.auth.currentUser?.id;
       if (userId == null) return [];
 
-      // Technique : Récupérer les derniers messages où l'utilisateur est présent
-      // Pour une version simple, on récupère les messages distincts par interlocuteur
-      final data = await supabaseService.client
-          .from('messages')
-          .select('*, sender:sender_id(user_name, profile_picture), receiver:receiver_id(user_name, profile_picture)')
-          .or('sender_id.eq.$userId,receiver_id.eq.$userId')
-          .order('timestamp', ascending: false);
-      
-      // Regrouper par interlocuteur pour simuler une liste de conversations
-      final Map<String, Map<String, dynamic>> conversations = {};
-      
-      for (var msg in (data as List)) {
-        final otherId = msg['sender_id'] == userId ? msg['receiver_id'] : msg['sender_id'];
-        if (!conversations.containsKey(otherId)) {
-          final otherProfile = msg['sender_id'] == userId ? msg['receiver'] : msg['sender'];
-          conversations[otherId] = {
-            'id': otherId,
-            'other_user_name': otherProfile?['user_name'] ?? 'Utilisateur',
-            'other_user_picture': otherProfile?['profile_picture'],
-            'last_message': msg['message'],
-            'last_message_time': msg['timestamp'],
-            'is_read': msg['is_read'],
-          };
-        }
-      }
+      // Appel direct à la fonction SQL créée sur Supabase
+      // Le serveur fait le tri, filtre les bloqués et renvoie juste ce qu'il faut !
+      final response = await supabaseService.client
+          .rpc('get_user_conversations', params: {'current_user_id': userId});
 
-      return conversations.values.toList();
+      // La réponse est déjà formatée exactement comme notre UI l'attend
+      return List<Map<String, dynamic>>.from(response);
+
     } catch (e) {
-      debugPrint("Erreur récupération conversations Supabase: $e");
+      debugPrint("Erreur récupération conversations via RPC: $e");
       return [];
+    }
+  }
+
+  /// Bloquer un utilisateur (Insère dans la table blocked_users)
+  Future<bool> blockUser(String blockedId) async {
+    try {
+      final userId = supabaseService.client.auth.currentUser?.id;
+      if (userId == null) return false;
+
+      await supabaseService.client.from('blocked_users').insert({
+        'blocker_id': userId,
+        'blocked_id': blockedId,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+      return true;
+    } catch (e) {
+      debugPrint("Erreur lors du blocage: $e");
+      return false;
     }
   }
 

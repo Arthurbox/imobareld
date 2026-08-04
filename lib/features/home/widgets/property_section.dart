@@ -27,7 +27,7 @@ class PropertySection extends StatefulWidget {
 }
 
 class _PropertySectionState extends State<PropertySection> {
-  late Stream<List<PropertyModel>> _propertiesStream;
+  late Future<List<PropertyModel>> _propertiesFuture;
   int _lastStreamVersion = -1;
 
   @override
@@ -39,7 +39,7 @@ class _PropertySectionState extends State<PropertySection> {
   void _initStream() {
     final propertyController = Provider.of<PropertyController>(context, listen: false);
     _lastStreamVersion = propertyController.streamVersion;
-    _propertiesStream = propertyController.getPropertiesStream(
+    _propertiesFuture = propertyController.getPropertiesForSection(
       category: widget.category,
       city: widget.city,
       limit: 20,
@@ -125,8 +125,8 @@ class _PropertySectionState extends State<PropertySection> {
               ),
             ),
             const SizedBox(height: 8),
-            StreamBuilder<List<PropertyModel>>(
-              stream: _propertiesStream,
+            FutureBuilder<List<PropertyModel>>(
+              future: _propertiesFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return SizedBox(

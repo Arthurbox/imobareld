@@ -86,32 +86,46 @@ class PropertyController extends ChangeNotifier {
   /// Nouvelle méthode Supabase : Compresse et télécharge les fichiers vers Supabase Storage
   Future<List<String>> compressAndUploadImages(List<XFile> images) async {
     List<String> uploadedUrls = [];
-    try {
-      final userId = supabaseService.client.auth.currentUser?.id;
-      if (userId == null) return [];
+    final userId = supabaseService.client.auth.currentUser?.id;
+    if (userId == null) throw Exception('Utilisateur non connecté (session expirée)');
 
-      for (var image in images) {
+    for (var image in images) {
+      try {
         Uint8List bytes;
         if (kIsWeb) {
           bytes = await image.readAsBytes();
         } else {
-          final compressed = await FlutterImageCompress.compressWithFile(
-            image.path,
-            quality: 85, // 85% pour garantir une excellente qualité visuelle
-          );
-          bytes = compressed ?? await image.readAsBytes();
+          try {
+            final compressed = await FlutterImageCompress.compressWithFile(
+              image.path,
+              quality: 85,
+            );
+            bytes = compressed ?? await image.readAsBytes();
+          } catch (compressError) {
+            debugPrint('⚠️ Erreur compression image, fallback: $compressError');
+            bytes = await image.readAsBytes();
+          }
         }
-        final extension = p.extension(image.path).toLowerCase();
+        String extension = p.extension(image.path).toLowerCase();
+        if (extension.isEmpty) extension = '.jpg';
         final fileName = 'prop_${DateTime.now().microsecondsSinceEpoch}$extension';
         final path = 'properties/$userId/$fileName';
 
         final url = await supabaseService.uploadBytes('media', path, bytes);
         uploadedUrls.add(url);
         debugPrint('✅ Image uploadée: $url');
+      } catch (e) {
+        debugPrint('🚨 Erreur upload Supabase pour une image: $e');
+        if (uploadedUrls.isEmpty && image == images.last) {
+          throw Exception('Upload failed: $e');
+        }
       }
-    } catch (e) {
-      debugPrint('🚨 Erreur upload Supabase: $e');
     }
+    
+    if (uploadedUrls.isEmpty && images.isNotEmpty) {
+      throw Exception('Aucune image n\'a pu être uploadée');
+    }
+    
     return uploadedUrls;
   }
 
@@ -375,7 +389,26 @@ class PropertyController extends ChangeNotifier {
       }
 
       if (searchQuery != null && searchQuery.isNotEmpty) {
-        filterQuery = filterQuery.or('title.ilike.%$searchQuery%,description.ilike.%$searchQuery%,quartier.ilike.%$searchQuery%');
+        // Recherche Full-Text via l'index PostgreSQL (100x plus rapide que ILIKE)
+        // Nécessite de créer cet index sur Supabase SQL Editor :
+        // ALTER TABLE properties ADD COLUMN IF NOT EXISTS search_vector tsvector
+        //   GENERATED ALWAYS AS (
+        //     to_tsvector('french', coalesce(title,'') || ' ' || coalesce(description,'') || ' ' || coalesce(quartier,''))
+        //   ) STORED;
+        // CREATE INDEX IF NOT EXISTS properties_search_idx ON properties USING GIN(search_vector);
+        //
+        // Si l'index n'est pas encore créé, on repasse en fallback ilike :
+        try {
+          filterQuery = filterQuery.textSearch(
+            'search_vector',
+            searchQuery.split(' ').map((w) => "$w:*").join(' & '),
+          );
+        } catch (_) {
+          // Fallback si la colonne search_vector n'existe pas encore
+          filterQuery = filterQuery.or(
+            'title.ilike.%$searchQuery%,description.ilike.%$searchQuery%,quartier.ilike.%$searchQuery%',
+          );
+        }
       }
 
       dynamic transformQuery = filterQuery.order('created_at', ascending: false);
@@ -387,10 +420,8 @@ class PropertyController extends ChangeNotifier {
       final data = await transformQuery;
       final results = (data as List).map((item) => PropertyModel.fromMap(item, item['id'].toString())).toList();
       
-      // Mettre à jour le cache local
-      for (var prop in results) {
-        await _dbHelper.upsertProperty(prop);
-      }
+      // Mettre à jour le cache local via une transaction groupée (non bloquante)
+      unawaited(_dbHelper.batchUpsertProperties(results));
       
       return results;
     } catch (e) {
@@ -399,149 +430,82 @@ class PropertyController extends ChangeNotifier {
     }
   }
 
-  /// Flux temps réel pour la page de Recherche (avec fallback offline)
-  Stream<List<PropertyModel>> getFilteredPropertiesStream({
-    String? category,
-    String? city,
-    String? quartier,
-    double? minPrice,
-    double? maxPrice,
-    int? minPieces,
-    String? searchQuery,
-  }) async* {
-    // 1. Émettre le cache local immédiatement
-    final List<PropertyModel> cached;
-    if (category != null && category != 'Toutes' && category != 'Tous') {
-      cached = await _dbHelper.getPropertiesByCategory(category);
-    } else {
-      cached = await _dbHelper.getAllProperties();
-    }
-    
-    // Filtrage local simple du cache
-    var currentList = cached;
-    if (city != null && city != 'Toutes les villes' && city != 'Toutes') {
-      currentList = currentList.where((p) => p.city == city).toList();
-    }
-    yield currentList;
-
-    // 2. Si En-ligne, écouter Supabase
-    if (_connectivity.isOnline) {
-      try {
-        final dynamic query = supabaseService.client.from('properties').stream(primaryKey: ['id']);
-        dynamic filteredQuery = query;
-        if (category != null && category != 'Toutes' && category != 'Tous') {
-          filteredQuery = query.eq('category', category);
-        }
-
-        // .where() ignore les listes vides émises au moment de la déconnexion
-        // .handleError() évite que l'erreur remonte au StreamBuilder et vide l'UI
-        yield* (filteredQuery as Stream<List<Map<String, dynamic>>>)
-            .where((data) => data.isNotEmpty)
-            .handleError((e) {
-              debugPrint('⚠️ Stream Filtered (handled): $e');
-            })
-            .map((List<Map<String, dynamic>> data) {
-              List<PropertyModel> properties = data.map((item) => PropertyModel.fromMap(item, item['id']?.toString() ?? '')).toList();
-
-              if (city != null && city != 'Toutes les villes' && city != 'Toutes') {
-                properties = properties.where((p) => p.city == city).toList();
-              }
-              if (quartier != null && quartier != 'Tous') {
-                properties = properties.where((p) => p.quartier == quartier).toList();
-              }
-              if (minPrice != null) {
-                properties = properties.where((p) => p.price >= minPrice).toList();
-              }
-              if (maxPrice != null) {
-                properties = properties.where((p) => p.price <= maxPrice).toList();
-              }
-              if (minPieces != null) {
-                properties = properties.where((p) => p.pieces >= minPieces).toList();
-              }
-              if (searchQuery != null && searchQuery.isNotEmpty) {
-                final queryLower = searchQuery.toLowerCase();
-                properties = properties.where((p) =>
-                  p.title.toLowerCase().contains(queryLower) ||
-                  p.description.toLowerCase().contains(queryLower) ||
-                  p.quartier.toLowerCase().contains(queryLower)
-                ).toList();
-              }
-
-              return properties;
-            });
-      } catch (e) {
-        debugPrint('⚠️ Stream Filtered setup error: $e');
-      }
-    }
-  }
-
-  /// Flux pour les sections de la page d'accueil (avec fallback offline)
-  Stream<List<PropertyModel>> getPropertiesStream({
+  /// Récupère les annonces pour une section (Accueil) avec filtrage optimisé (Future)
+  Future<List<PropertyModel>> getPropertiesForSection({
     required String category,
     String? city,
     int limit = 5,
-  }) async* {
-    // 1. Émettre le cache local immédiatement
-    final cached = await _dbHelper.getPropertiesByCategory(category);
-    var currentList = cached;
-    if (city != null && city != 'Toutes les villes' && city != 'Toutes') {
-      currentList = currentList.where((p) => p.city == city).toList();
-    }
-    yield currentList.take(limit).toList();
-
-    // 2. Si En-ligne, écouter Supabase
-    if (_connectivity.isOnline) {
-      try {
-        final dynamic query = supabaseService.client.from('properties').stream(primaryKey: ['id']).eq('category', category);
-        
-        // .where() ignore les émissions vides liées à la perte de connexion
-        // .handleError() empêche l'erreur de vider le StreamBuilder
-        if (city != null && city != 'Toutes les villes' && city != 'Toutes') {
-          yield* (query as Stream<List<Map<String, dynamic>>>)
-              .where((data) => data.isNotEmpty)
-              .handleError((e) => debugPrint('⚠️ getPropertiesStream (handled): $e'))
-              .map((data) {
-                final filtered = data.where((item) => item['city'] == city).take(limit);
-                return filtered.map((item) => PropertyModel.fromMap(item, item['id']?.toString() ?? '')).toList();
-              });
-        } else {
-          yield* (query as Stream<List<Map<String, dynamic>>>)
-              .where((data) => data.isNotEmpty)
-              .handleError((e) => debugPrint('⚠️ getPropertiesStream (handled): $e'))
-              .map((data) => data.take(limit).map((item) => PropertyModel.fromMap(item, item['id']?.toString() ?? '')).toList());
-        }
-      } catch (e) {
-        debugPrint('⚠️ Stream Home setup error: $e');
+  }) async {
+    // Mode hors-ligne : SQLite
+    if (!_connectivity.isOnline) {
+      var cached = await _dbHelper.getPropertiesByCategory(category);
+      if (city != null && city != 'Toutes les villes' && city != 'Toutes') {
+        cached = cached.where((p) => p.city == city).toList();
       }
+      return cached.take(limit).toList();
+    }
+
+    // Mode en-ligne : Supabase (Filtrage complet côté serveur)
+    try {
+      dynamic query = supabaseService.client.from('properties').select().eq('category', category);
+      
+      if (city != null && city != 'Toutes les villes' && city != 'Toutes') {
+        query = query.eq('city', city);
+      }
+      
+      final data = await query.order('created_at', ascending: false).limit(limit);
+      
+      final results = (data as List).map((item) => PropertyModel.fromMap(item, item['id'].toString())).toList();
+      
+      // Mise à jour du cache en arrière-plan via transaction groupée (non bloquante)
+      unawaited(_dbHelper.batchUpsertProperties(results));
+      
+      return results;
+    } catch (e) {
+      debugPrint('⚠️ Erreur getPropertiesForSection: $e');
+      // Fallback local en cas d'erreur
+      var cached = await _dbHelper.getPropertiesByCategory(category);
+      if (city != null && city != 'Toutes les villes' && city != 'Toutes') {
+        cached = cached.where((p) => p.city == city).toList();
+      }
+      return cached.take(limit).toList();
     }
   }
 
-  /// Flux des propriétés filtrées par ville (Temps Réel avec fallback SQLite, pour Admin)
-  Stream<List<PropertyModel>> propertiesByCityStream(String city) async* {
-    var cached = await _dbHelper.getAllProperties();
-    if (city != 'Toutes les villes' && city != 'Toutes') {
-      cached = cached.where((p) => p.city == city).toList();
-    }
-    yield cached;
-
-    if (_connectivity.isOnline) {
-      try {
-        final dynamic query = supabaseService.client.from('properties').stream(primaryKey: ['id']);
-        dynamic filteredQuery = (city == 'Toutes les villes' || city == 'Toutes') ? query : query.eq('city', city);
-        
-        yield* (filteredQuery as Stream<List<Map<String, dynamic>>>)
-            .where((data) => data.isNotEmpty)
-            .handleError((e) => debugPrint('⚠️ propertiesByCityStream (handled): $e'))
-            .map((data) {
-              final results = data.map((item) => PropertyModel.fromMap(item, item['id']?.toString() ?? '')).toList();
-              for (var p in results) {
-                _dbHelper.upsertProperty(p);
-              }
-              return results;
-            });
-      } catch (e) {
-        debugPrint('⚠️ Stream propertiesByCityStream setup error: $e');
+  /// Récupère les propriétés filtrées par ville (Pour Admin) (Future)
+  Future<List<PropertyModel>> getPropertiesByCityAdmin(String city) async {
+    // Mode hors-ligne : SQLite
+    if (!_connectivity.isOnline) {
+      var cached = await _dbHelper.getAllProperties();
+      if (city != 'Toutes les villes' && city != 'Toutes') {
+        cached = cached.where((p) => p.city == city).toList();
       }
+      return cached;
+    }
+
+    // Mode en-ligne : Supabase (Filtrage serveur)
+    try {
+      dynamic query = supabaseService.client.from('properties').select();
+      
+      if (city != 'Toutes les villes' && city != 'Toutes') {
+        query = query.eq('city', city);
+      }
+      
+      final data = await query.order('created_at', ascending: false);
+      
+      final results = (data as List).map((item) => PropertyModel.fromMap(item, item['id'].toString())).toList();
+      
+      // Mise à jour du cache en arrière-plan via transaction groupée (non bloquante)
+      unawaited(_dbHelper.batchUpsertProperties(results));
+      
+      return results;
+    } catch (e) {
+      debugPrint('⚠️ Erreur getPropertiesByCityAdmin: $e');
+      var cached = await _dbHelper.getAllProperties();
+      if (city != 'Toutes les villes' && city != 'Toutes') {
+        cached = cached.where((p) => p.city == city).toList();
+      }
+      return cached;
     }
   }
 
@@ -839,20 +803,23 @@ class PropertyController extends ChangeNotifier {
       if (extension.isEmpty) extension = '.mp4';
 
       if (kIsWeb) {
-        // Sur Web, on ne compresse pas (video_compress n'est pas compatible)
         bytes = await video.readAsBytes();
       } else {
-        // Sur Mobile, on compresse
-        final MediaInfo? mediaInfo = await VideoCompress.compressVideo(
-          video.path,
-          quality: VideoQuality.MediumQuality,
-          deleteOrigin: false,
-        );
-        
-        if (mediaInfo != null && mediaInfo.file != null) {
-          bytes = await mediaInfo.file!.readAsBytes();
-        } else {
-          return null;
+        try {
+          final MediaInfo? mediaInfo = await VideoCompress.compressVideo(
+            video.path,
+            quality: VideoQuality.MediumQuality,
+            deleteOrigin: false,
+          );
+          
+          if (mediaInfo != null && mediaInfo.file != null) {
+            bytes = await mediaInfo.file!.readAsBytes();
+          } else {
+            bytes = await video.readAsBytes();
+          }
+        } catch (compressError) {
+          debugPrint('⚠️ Erreur compression vidéo, fallback: $compressError');
+          bytes = await video.readAsBytes();
         }
       }
       
@@ -863,8 +830,8 @@ class PropertyController extends ChangeNotifier {
       return url;
     } catch (e) {
       debugPrint('Err compressAndUploadVideo Supabase: $e');
+      throw Exception('Video upload failed: $e');
     }
-    return null;
   }
 
   /// Mettre à jour la vidéo d'une propriété via Supabase

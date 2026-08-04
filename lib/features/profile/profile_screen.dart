@@ -483,6 +483,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                   ),
+
+                  const SizedBox(height: 16),
+
+                  // Bouton Supprimer mon compte
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton.icon(
+                      onPressed: () async {
+                        final bool? confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return AlertDialog(
+                              title: const Text('Supprimer mon compte'),
+                              content: const Text(
+                                'Êtes-vous sûr ? Cette action est irréversible et supprimera toutes vos données.',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(context).pop(false),
+                                  child: const Text('Annuler'),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.of(context).pop(true),
+                                  child: const Text('Supprimer', style: TextStyle(color: Colors.red)),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+
+                        if (confirm == true && mounted) {
+                          final authController = Provider.of<AuthController>(context, listen: false);
+                          final messenger = ScaffoldMessenger.of(context);
+                          final navigator = Navigator.of(context);
+                          
+                          final success = await authController.deleteAccount();
+                          if (success) {
+                            navigator.pushReplacementNamed('/login');
+                          } else {
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text('Erreur lors de la suppression du compte.'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      icon: const Icon(Icons.delete_forever, color: Colors.red),
+                      label: const Text('Supprimer mon compte', style: TextStyle(color: Colors.red)),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
                   ],
                 ),
               ),

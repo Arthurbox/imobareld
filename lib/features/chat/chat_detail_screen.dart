@@ -61,6 +61,64 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               Navigator.pop(context);
           },
         ),
+        actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: AppColors.primaryBlue),
+            onSelected: (value) async {
+              if (value == 'block') {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Bloquer l\'utilisateur'),
+                    content: Text('Voulez-vous vraiment bloquer ${widget.otherUserName} ? Vous ne recevrez plus de messages de sa part.'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true), 
+                        child: const Text('Bloquer', style: TextStyle(color: Colors.red)),
+                      ),
+                    ],
+                  ),
+                );
+                
+                if (confirm == true && context.mounted) {
+                  final chatController = Provider.of<ChatController>(context, listen: false);
+                  final success = await chatController.blockUser(widget.otherUserId);
+                  if (context.mounted) {
+                    if (success) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Utilisateur bloqué avec succès.'), backgroundColor: Colors.red),
+                      );
+                      chatController.disconnectWebSocket();
+                      Navigator.pop(context); // Quitter le chat
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Action locale réussie (Créer la table "blocked_users" sur Supabase).'),
+                          backgroundColor: Colors.blueGrey,
+                        ),
+                      );
+                      chatController.disconnectWebSocket();
+                      Navigator.pop(context);
+                    }
+                  }
+                }
+              }
+            },
+            itemBuilder: (BuildContext context) => [
+              const PopupMenuItem<String>(
+                value: 'block',
+                child: Row(
+                  children: [
+                    Icon(Icons.block, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('Bloquer l\'utilisateur', style: TextStyle(color: Colors.red)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
       body: Consumer<ChatController>(
         builder: (context, chatController, child) {

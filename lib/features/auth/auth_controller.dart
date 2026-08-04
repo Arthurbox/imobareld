@@ -28,16 +28,56 @@ class AuthController extends ChangeNotifier {
     supabaseService.client.auth.onAuthStateChange.listen((data) {
       final sb.AuthChangeEvent event = data.event;
       debugPrint('🔔 [Auth Event] : $event');
-      // On print aussi l'URL au cas où supabase_flutter nous donnerait du contexte supplémentaire ? 
-      // Non, data n'a que event et session.
-      
+
+      // ─── Renouvellement silencieux du token (toutes les ~60 min) ───
+      // Supabase gère ça automatiquement, on rafraîchit juste le profil local.
+      if (event == sb.AuthChangeEvent.tokenRefreshed) {
+        debugPrint('🔄 [tokenRefreshed] Token renouvelé silencieusement.');
+        final userId = data.session?.user.id;
+        if (userId != null) {
+          // Rafraîchir le cache du profil sans bloquer l'UI
+          supabaseService.client
+              .from('profiles')
+              .select()
+              .eq('id', userId)
+              .maybeSingle()
+              .then((response) {
+            if (response != null) {
+              _currentUser = UserModel.fromMap(response, userId);
+              _userCache[userId] = _currentUser!;
+              _saveProfileToCache(_currentUser!, userId);
+              notifyListeners();
+            }
+          }).catchError((e) {
+            debugPrint('⚠️ Erreur rafraîchissement profil après tokenRefreshed: $e');
+          });
+        }
+      }
+
+      // ─── Session expirée ou déconnexion ───
+      // Cela couvre : déconnexion manuelle, token non renouvelable, session révoquée côté serveur.
+      if (event == sb.AuthChangeEvent.signedOut) {
+        debugPrint('🚪 [signedOut] Session terminée, redirection vers Login.');
+        _currentUser = null;
+        _profileSubscription?.cancel();
+        notifyListeners();
+
+        // Redirection propre vers le Login avec un court délai
+        Future.delayed(const Duration(milliseconds: 200), () {
+          if (navigatorKey.currentState != null) {
+            navigatorKey.currentState!.pushNamedAndRemoveUntil(
+              '/login',
+              (route) => false,
+            );
+          }
+        });
+      }
+
       if (event == sb.AuthChangeEvent.passwordRecovery) {
         debugPrint('🔓 [passwordRecovery] Event reçu ! Redirection vers ResetPasswordScreen...');
         _isRecoveringPassword = true;
         notifyListeners();
 
-        // Si l'application est déjà ouverte, on navigue de force avec un court délai 
-        // pour s'assurer que le Navigator est bien prêt et pas en cours de build.
         Future.delayed(const Duration(milliseconds: 300), () {
           if (navigatorKey.currentState != null) {
             debugPrint('🚀 navigatorKey valide, exécution de pushAndRemoveUntil!');
@@ -954,6 +994,46 @@ class AuthController extends ChangeNotifier {
           .eq('id', userId);
     } catch (e) {
       debugPrint('Erreur updateLastReadProperties: $e');
+    }
+  }
+
+  Future<bool> deleteAccount() async {
+    try {
+      _isLoading = true; notifyListeners();
+      final userId = _currentUser?.id ?? supabaseService.client.auth.currentUser?.id;
+      if (userId == null) return false;
+
+      // Soft delete: Delete personal user data from profiles table
+      // Note: We use user_name instead of full_name since this app uses user_name based on manualProfileSync
+      await supabaseService.client
+          .from('profiles')
+          .update({
+            'user_name': 'Compte Supprimé', 
+            'phone': '',
+            'email': 'supprime@imobareld.app',
+            'profile_picture': null
+          })
+          .eq('id', userId)
+          .catchError((_) {}); // Ignore RLS error if any
+
+      // Hard delete: Supprimer toutes les annonces et publications du client
+      try {
+        await supabaseService.client.from('properties').delete().eq('owner_id', userId);
+        await supabaseService.client.from('announcements').delete().eq('author_id', userId);
+        await supabaseService.client.from('realisations').delete().eq('owner_id', userId);
+      } catch (e) {
+        debugPrint('Erreur suppression des publications: $e');
+      }
+
+      // Logout
+      await logout();
+      
+      _isLoading = false; notifyListeners();
+      return true;
+    } catch (e) {
+      debugPrint('🚨 Erreur deleteAccount: $e');
+      _isLoading = false; notifyListeners();
+      return false;
     }
   }
 
