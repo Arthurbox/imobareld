@@ -221,6 +221,48 @@ class DatabaseHelper {
     );
   }
 
+  /// Insère ou met à jour une LISTE de propriétés en une seule transaction SQLite (optimisé)
+  /// Utiliser cette méthode à la place d'une boucle for sur upsertProperty
+  Future<void> batchUpsertProperties(List<PropertyModel> properties) async {
+    if (kIsWeb || properties.isEmpty) return;
+    final db = await database;
+    if (db == null) return;
+    final now = DateTime.now().toIso8601String();
+
+    await db.transaction((txn) async {
+      for (final property in properties) {
+        if (property.id == null) continue;
+        await txn.insert(
+          'properties',
+          {
+            'id': property.id,
+            'ownerId': property.ownerId,
+            'title': property.title,
+            'description': property.description,
+            'category': property.category,
+            'price': property.price,
+            'quartier': property.quartier,
+            'images': jsonEncode(property.images),
+            'pieces': property.pieces,
+            'createdAt': property.createdAt.toIso8601String(),
+            'latitude': property.latitude,
+            'longitude': property.longitude,
+            'likesCount': property.likesCount,
+            'video_urls': jsonEncode(property.videoUrls),
+            'isOwnerVerified': property.isOwnerVerified ? 1 : 0,
+            'priceDuration': property.priceDuration,
+            'amenities': jsonEncode(property.amenities),
+            'isCertified': property.isCertified ? 1 : 0,
+            'averageRating': property.averageRating,
+            'reviewCount': property.reviewCount,
+            'lastSyncedAt': now,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+    });
+  }
+
   /// Récupère toutes les propriétés en cache
   Future<List<PropertyModel>> getAllProperties() async {
     if (kIsWeb) return [];

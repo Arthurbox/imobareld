@@ -306,7 +306,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Row(
                         children: [
                           GestureDetector(
-                            onTap: () => launchUrl(Uri.parse('https://facebook.com')),
+                            onTap: () => launchUrl(Uri.parse('https://web.facebook.com/profile.php?id=61591986731308')),
                             child: const FaIcon(FontAwesomeIcons.facebook, color: Color(0xFF1877F2), size: 28),
                           ),
                           const SizedBox(width: 24),
@@ -320,7 +320,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           const SizedBox(width: 24),
                           GestureDetector(
-                            onTap: () => launchUrl(Uri.parse('https://youtube.com')),
+                            onTap: () => launchUrl(Uri.parse('https://www.youtube.com/@IMOBARELD')),
                             child: const FaIcon(FontAwesomeIcons.youtube, color: Color(0xFFFF0000), size: 28),
                           ),
                         ],

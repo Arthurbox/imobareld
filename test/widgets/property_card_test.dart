@@ -79,6 +79,9 @@ class MockAuthController extends ChangeNotifier implements AuthController {
 
   @override
   Future<bool> signInWithFacebook({String userType = 'locataire'}) async => true;
+
+  @override
+  Future<bool> deleteAccount() async => true;
 }
 
 class MockPropertyController extends ChangeNotifier implements PropertyController {

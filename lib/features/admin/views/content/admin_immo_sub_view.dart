@@ -102,8 +102,8 @@ class _AdminImmoSubViewState extends State<AdminImmoSubView> {
               label: Text('Supprimer (${_selectedPropertyIds.length})', style: const TextStyle(color: Colors.white)),
             )
           : null,
-      body: StreamBuilder<List<PropertyModel>>(
-        stream: propertyController.propertiesByCityStream(widget.city),
+      body: FutureBuilder<List<PropertyModel>>(
+        future: propertyController.getPropertiesByCityAdmin(widget.city),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) return const SkeletonList(itemCount: 4, itemHeight: 120);
 
