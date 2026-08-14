@@ -124,20 +124,25 @@ class RealisationController extends ChangeNotifier {
 
       final MediaInfo? mediaInfo = await VideoCompress.compressVideo(
         video.path,
-        quality: VideoQuality.MediumQuality,
+        quality: VideoQuality.DefaultQuality,
         deleteOrigin: false,
       );
       
-      if (mediaInfo == null || mediaInfo.file == null) return null;
-      
-      final bytes = await mediaInfo.file!.readAsBytes();
+      final bytes = mediaInfo != null && mediaInfo.file != null 
+          ? await mediaInfo.file!.readAsBytes() 
+          : await video.readAsBytes();
       String extension = p.extension(video.path).toLowerCase();
       if (extension.isEmpty) extension = '.mp4';
       
       final fileName = 'realisation_vid_${DateTime.now().microsecondsSinceEpoch}$extension';
       final path = 'realisations/$fileName';
 
-      final url = await supabaseService.uploadBytes('media', path, bytes);
+      final url = await supabaseService.uploadBytes(
+        'media', 
+        path, 
+        bytes,
+        contentType: 'video/mp4', // Spécifier explicitement le Content-Type
+      );
       
       _isLoading = false;
       notifyListeners();

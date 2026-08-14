@@ -32,6 +32,13 @@ class PropertyModel {
   final String? boostPlanType;
   final int commentsCount;
 
+  String get referenceCode {
+    if (id != null && id!.length >= 6) {
+      return 'REF-${id!.substring(0, 6).toUpperCase()}';
+    }
+    return 'REF-UNKNOWN';
+  }
+
   PropertyModel({
     this.id,
     required this.ownerId,

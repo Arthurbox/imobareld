@@ -66,6 +66,10 @@ class _BannerCarouselState extends State<BannerCarousel> {
 
   @override
   Widget build(BuildContext context) {
+    final double screenWidth = MediaQuery.of(context).size.width;
+    // Sur grand écran (Desktop/Web > 800px), on augmente la hauteur à 300 (réduit suite au test)
+    final double bannerHeight = screenWidth > 800 ? 300.0 : 220.0;
+
     if (widget.isLoading) {
       return const SkeletonBanner();
     }
@@ -78,7 +82,7 @@ class _BannerCarouselState extends State<BannerCarousel> {
         child: Column(
           children: [
             SizedBox(
-              height: 220,
+              height: bannerHeight,
               child: PageView.builder(
                 controller: _pageController,
                 onPageChanged: (index) {

@@ -50,14 +50,14 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
-  String _selectedCategory = 'Appartement';
+  String _selectedCategory = 'Appartements';
   String _selectedCity = 'Ouagadougou';
   int _refreshKey = 0; // Incrémenté pour forcer le rechargement des sections
 
   final ScrollController _scrollController = ScrollController();
   final GlobalKey<SearchScreenState> _searchKey = GlobalKey();
   final Map<String, GlobalKey> _categoryKeys = {
-    'Appartement': GlobalKey(),
+    'Appartements': GlobalKey(),
     'Cours Uniques': GlobalKey(),
     'Cours Communes': GlobalKey(),
     'Magasins': GlobalKey(),
@@ -66,7 +66,7 @@ class _HomeScreenState extends State<HomeScreen> {
   };
 
   final List<Map<String, dynamic>> _categories = [
-    {'icon': Icons.weekend_outlined, 'label': 'Appartement'},
+    {'icon': Icons.weekend_outlined, 'label': 'Appartements'},
     {'icon': Icons.home_outlined, 'label': 'Cours Uniques'},
     {'icon': Icons.groups_outlined, 'label': 'Cours Communes'},
     {'icon': Icons.storefront_outlined, 'label': 'Magasins'},
@@ -652,7 +652,7 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
             _buildFilters(),
-            SizedBox(key: _categoryKeys['Appartement'], child: PropertySection(key: ValueKey('Appartement_${_selectedCity}_$_refreshKey'), title: 'Appartement', category: 'Appartement', city: _selectedCity, onCommentTap: (p) => _showCommentSheet(context, p))),
+            SizedBox(key: _categoryKeys['Appartements'], child: PropertySection(key: ValueKey('Appartements_${_selectedCity}_$_refreshKey'), title: 'Appartements', category: 'Appartements', city: _selectedCity, onCommentTap: (p) => _showCommentSheet(context, p))),
             SizedBox(key: _categoryKeys['Cours Uniques'], child: PropertySection(key: ValueKey('CoursUniques_${_selectedCity}_$_refreshKey'), title: 'Cours Uniques', category: 'Cours Uniques', city: _selectedCity, onCommentTap: (p) => _showCommentSheet(context, p))),
             SizedBox(key: _categoryKeys['Cours Communes'], child: PropertySection(key: ValueKey('CoursCommunes_${_selectedCity}_$_refreshKey'), title: 'Cours Communes', category: 'Cours Communes', city: _selectedCity, onCommentTap: (p) => _showCommentSheet(context, p))),
             SizedBox(key: _categoryKeys['Magasins'], child: PropertySection(key: ValueKey('Magasins_${_selectedCity}_$_refreshKey'), title: 'Magasins', category: 'Magasins', city: _selectedCity, onCommentTap: (p) => _showCommentSheet(context, p))),

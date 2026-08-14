@@ -16,6 +16,14 @@ class _AdminUsersViewState extends State<AdminUsersView> {
   final TextEditingController _searchCtrl = TextEditingController();
   String _searchQuery = '';
   final Set<String> _selectedUserIds = {};
+  late Stream<List<UserModel>> _usersStream;
+
+  @override
+  void initState() {
+    super.initState();
+    final adminCtrl = Provider.of<AdminController>(context, listen: false);
+    _usersStream = adminCtrl.allUsersStream();
+  }
 
   @override
   void dispose() {
@@ -136,7 +144,7 @@ class _AdminUsersViewState extends State<AdminUsersView> {
           ),
           Expanded(
             child: StreamBuilder<List<UserModel>>(
-              stream: adminCtrl.allUsersStream(query: _searchQuery),
+              stream: _usersStream,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const SkeletonList(itemCount: 8, itemHeight: 60);
@@ -147,6 +155,15 @@ class _AdminUsersViewState extends State<AdminUsersView> {
 
                 var users = snapshot.data ?? [];
                 
+                if (_searchQuery.isNotEmpty) {
+                  final q = _searchQuery.toLowerCase();
+                  users = users.where((u) =>
+                    u.name.toLowerCase().contains(q) ||
+                    u.email.toLowerCase().contains(q) ||
+                    (u.phone?.contains(q) ?? false)
+                  ).toList();
+                }
+
                 // Filtrage Optimistic UI
                 users = users.where((u) => !adminCtrl.isPendingDeletion(u.id)).toList();
                 if (users.isEmpty) {

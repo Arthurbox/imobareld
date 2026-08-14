@@ -356,6 +356,7 @@ class AuthController extends ChangeNotifier {
           email: email,
           userType: userType,
           phone: phone,
+          forceUpdateRole: true,
         );
 
         // Tentative de récupération du profil après synchronisation
@@ -497,7 +498,7 @@ class AuthController extends ChangeNotifier {
   }
 
   /// Authentification Google via Supabase
-  Future<bool> signInWithGoogle({String userType = 'locataire'}) async {
+  Future<bool> signInWithGoogle({String? userType}) async {
     try {
       _isLoading = true;
       _errorMessage = null;
@@ -508,8 +509,10 @@ class AuthController extends ChangeNotifier {
         debugPrint('🌐 Lancement du flux Google OAuth via redirection (Web)');
         
         // Sauvegarder le userType souhaité pour le récupérer après redirection
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('pending_user_type', userType);
+        if (userType != null) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('pending_user_type', userType);
+        }
         
         await supabaseService.client.auth.signInWithOAuth(
           sb.OAuthProvider.google,
@@ -591,16 +594,18 @@ class AuthController extends ChangeNotifier {
         final currentType = _currentUser?.userType ?? 'locataire';
         
         final bool isNewOrMissingName = !success || _currentUser == null || currentName.isEmpty || currentName == 'Utilisateur';
-        final bool isTypeWrong = currentType != userType;
+        final bool isTypeWrong = userType != null && currentType != userType;
         
         if ((isNewOrMissingName || isTypeWrong) && expectedName.isNotEmpty) {
-           debugPrint('🔄 Synchronisation du profil Google: $expectedName | Type: $userType (ancien: $currentType)');
+           final typeToSave = userType ?? currentType;
+           debugPrint('🔄 Synchronisation du profil Google: $expectedName | Type: $typeToSave (ancien: $currentType)');
              await _manualProfileSync(
                id: response.user!.id, 
                name: expectedName, 
                email: response.user!.email ?? '',
-               userType: userType,
+               userType: typeToSave,
                phone: _currentUser?.phone, // Conserver le téléphone existant si présent
+               forceUpdateRole: isTypeWrong || isNewOrMissingName,
              );
            // Rafraîchir l'utilisateur local après synchronisation
            success = await initUser();
@@ -632,14 +637,14 @@ class AuthController extends ChangeNotifier {
   }
 
   /// Authentification Facebook via Supabase
-  Future<bool> signInWithFacebook({String userType = 'locataire'}) async {
+  Future<bool> signInWithFacebook({String? userType}) async {
     try {
       _isLoading = true;
       _errorMessage = null;
       notifyListeners();
 
       // Sauvegarder le userType souhaité pour le récupérer après redirection (Web)
-      if (kIsWeb) {
+      if (kIsWeb && userType != null) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('pending_user_type', userType);
       }
@@ -679,6 +684,7 @@ class AuthController extends ChangeNotifier {
     required String email,
     required String userType,
     String? phone,
+    bool forceUpdateRole = false,
   }) async {
     try {
       // Vérifier si le profil existe déjà et son type de compte
@@ -716,7 +722,7 @@ class AuthController extends ChangeNotifier {
         'updated_at': DateTime.now().toIso8601String(),
       };
       
-      if (!hasExistingType) {
+      if (!hasExistingType || forceUpdateRole) {
         updateData['user_type'] = userType;
         // Si c'est un propriétaire, on initialise l'abonnement en essai de 6 mois
         if (userType == 'propriétaire') {

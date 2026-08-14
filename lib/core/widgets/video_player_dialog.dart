@@ -46,14 +46,28 @@ class _VideoPlayerDialogState extends State<VideoPlayerDialog> {
           ),
         ),
         errorBuilder: (context, errorMessage) {
+          debugPrint('VideoPlayerDialog Chewie error: $errorMessage');
           return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Text(
-                'Erreur de lecture : $errorMessage',
-                style: const TextStyle(color: Colors.white),
-                textAlign: TextAlign.center,
-              ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.videocam_off_rounded, color: Colors.white54, size: 44),
+                const SizedBox(height: 12),
+                const Text(
+                  'Impossible de lire cette vidéo',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 4),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    'Ce format n\'est peut-être pas supporté par votre appareil.',
+                    style: TextStyle(color: Colors.white54, fontSize: 12),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
             ),
           );
         },
@@ -65,11 +79,11 @@ class _VideoPlayerDialogState extends State<VideoPlayerDialog> {
         });
       }
     } catch (e) {
-      debugPrint('Erreur VideoPlayerDialog: $e');
+      debugPrint('Erreur VideoPlayerDialog (codec incompatible ?): $e');
       if (mounted) {
         setState(() {
           _isInitializing = false;
-          _error = 'Impossible de charger la vidéo';
+          _error = 'Impossible de lire cette vidéo sur cet appareil.';
         });
       }
     }
@@ -135,9 +149,19 @@ class _VideoPlayerDialogState extends State<VideoPlayerDialog> {
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  const Icon(Icons.error_outline, color: Colors.red, size: 40),
-                                  const SizedBox(height: 16),
-                                  Text(_error!, style: const TextStyle(color: Colors.white)),
+                                  const Icon(Icons.videocam_off_rounded, color: Colors.white54, size: 48),
+                                  const SizedBox(height: 14),
+                                  Text(
+                                    _error!,
+                                    style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  const Text(
+                                    'Essayez sur un autre appareil.',
+                                    style: TextStyle(color: Colors.white54, fontSize: 12),
+                                    textAlign: TextAlign.center,
+                                  ),
                                 ],
                               ),
                             ),

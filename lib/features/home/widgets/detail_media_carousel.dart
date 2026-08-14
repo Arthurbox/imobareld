@@ -16,6 +16,7 @@ class DetailMediaCarousel extends StatelessWidget {
   final ChewieController? chewieController;
   final String propertyId;
   final void Function(int index) onPageChanged;
+  final void Function(int videoIdx, int pageIndex) onVideoTap;
 
   const DetailMediaCarousel({
     super.key,
@@ -30,6 +31,7 @@ class DetailMediaCarousel extends StatelessWidget {
     required this.chewieController,
     required this.propertyId,
     required this.onPageChanged,
+    required this.onVideoTap,
   });
 
   @override
@@ -74,8 +76,10 @@ class DetailMediaCarousel extends StatelessWidget {
                       ? const Center(child: CircularProgressIndicator(color: Colors.white))
                       : (activeVideoIndex == index && chewieController != null)
                           ? Chewie(controller: chewieController!)
-                          : Center(
-                              child: Column(
+                          : GestureDetector(
+                              onTap: () => onVideoTap(videoIdx, index),
+                              child: Center(
+                                child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   const Icon(Icons.play_circle_outline, color: Colors.white, size: 50),
@@ -87,6 +91,7 @@ class DetailMediaCarousel extends StatelessWidget {
                                 ],
                               ),
                             ),
+                          ),
                 );
               }
 

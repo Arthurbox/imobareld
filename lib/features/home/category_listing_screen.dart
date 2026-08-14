@@ -12,7 +12,8 @@ class CategoryListingScreen extends StatefulWidget {
   final String category;
   final String? city;
 
-  const CategoryListingScreen({super.key, required this.category, this.city});
+  const CategoryListingScreen(
+      {super.key, required this.category, this.city});
 
   @override
   State<CategoryListingScreen> createState() => _CategoryListingScreenState();
@@ -20,13 +21,28 @@ class CategoryListingScreen extends StatefulWidget {
 
 class _CategoryListingScreenState extends State<CategoryListingScreen> {
   final ScrollController _scrollController = ScrollController();
-  late Future<List<PropertyModel>> _propertiesFuture;
 
   @override
   void initState() {
     super.initState();
-    _propertiesFuture = Provider.of<PropertyController>(context, listen: false)
-        .getFilteredProperties(category: widget.category, city: widget.city);
+    // Charger la première page au démarrage
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<PropertyController>(context, listen: false)
+          .fetchPagedProperties(refresh: true, category: widget.category);
+    });
+    // Détecter quand l'utilisateur approche du bas de la liste
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final threshold = _scrollController.position.maxScrollExtent - 200;
+    if (_scrollController.offset >= threshold) {
+      final ctrl = Provider.of<PropertyController>(context, listen: false);
+      if (ctrl.hasMore && !ctrl.isFetchingMore) {
+        ctrl.fetchPagedProperties(category: widget.category);
+      }
+    }
   }
 
   @override
@@ -41,82 +57,107 @@ class _CategoryListingScreenState extends State<CategoryListingScreen> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text(widget.category, style: TextStyle(color: theme.textTheme.titleLarge?.color)),
+        title: Text(
+          widget.category,
+          style: TextStyle(color: theme.textTheme.titleLarge?.color),
+        ),
         backgroundColor: theme.appBarTheme.backgroundColor,
         elevation: 0,
         iconTheme: theme.appBarTheme.iconTheme,
       ),
-      body: FutureBuilder<List<PropertyModel>>(
-        future: _propertiesFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+      body: Consumer<PropertyController>(
+        builder: (context, controller, _) {
+          final properties = controller.pagedProperties;
+
+          // ── Premier chargement ──────────────────────────────────────────
+          if (controller.isFetchingMore && properties.isEmpty) {
             return ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: 4,
-              itemBuilder: (context, index) => const Padding(
+              itemBuilder: (_, __) => const Padding(
                 padding: EdgeInsets.only(bottom: 16),
                 child: PropertyCardShimmer(),
               ),
             );
           }
 
-          if (snapshot.hasError) {
+          // ── Liste vide ──────────────────────────────────────────────────
+          if (!controller.isFetchingMore && properties.isEmpty) {
             return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Text(
-                  "Erreur: ${snapshot.error}",
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.red),
-                ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.search_off_rounded,
+                      size: 64, color: theme.colorScheme.outline),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Aucune annonce trouvée\ndans cette catégorie.',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyLarge
+                        ?.copyWith(color: theme.colorScheme.outline),
+                  ),
+                ],
               ),
             );
           }
 
-          final properties = snapshot.data ?? [];
-
-          if (properties.isEmpty) {
-            return const Center(child: Text("Aucune annonce trouvée."));
-          }
-
+          // ── Liste paginée ───────────────────────────────────────────────
           return LayoutBuilder(
             builder: (context, constraints) {
               if (constraints.maxWidth > 600) {
-                int crossAxisCount = constraints.maxWidth > 900 ? 3 : 2;
-                return GridView.builder(
+                // Tablette / Web : grille
+                final int crossCount = constraints.maxWidth > 900 ? 3 : 2;
+                return CustomScrollView(
                   controller: _scrollController,
-                  padding: const EdgeInsets.all(16),
-                  cacheExtent: 1500,
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: crossAxisCount,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    mainAxisExtent: 260, // Fixed height to match mobile container
-                  ),
-                  itemCount: properties.length,
-                  itemBuilder: (context, index) {
-                    return PropertyCard(
-                      property: properties[index],
-                      onCommentTap: () => _showCommentSheet(context, properties[index]),
-                    );
-                  },
+                  slivers: [
+                    SliverPadding(
+                      padding: const EdgeInsets.all(16),
+                      sliver: SliverGrid(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) => PropertyCard(
+                            property: properties[index],
+                            onCommentTap: () =>
+                                _showCommentSheet(context, properties[index]),
+                          ),
+                          childCount: properties.length,
+                        ),
+                        gridDelegate:
+                            SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: crossCount,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                          mainAxisExtent: 260,
+                        ),
+                      ),
+                    ),
+                    _buildFooterSliver(context, controller),
+                  ],
                 );
               }
-              return ListView.builder(
+
+              // Mobile : liste verticale
+              return CustomScrollView(
                 controller: _scrollController,
-                padding: const EdgeInsets.all(16),
-                cacheExtent: 1500, // PRÉ-CHARGEMENT pour une fluidité maximale
-                itemCount: properties.length,
-                itemBuilder: (context, index) {
-                  return Container(
-                    height: 260,
-                    margin: const EdgeInsets.only(bottom: 16),
-                    child: PropertyCard(
-                      property: properties[index],
-                      onCommentTap: () => _showCommentSheet(context, properties[index]),
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.all(16),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) => Container(
+                          height: 260,
+                          margin: const EdgeInsets.only(bottom: 16),
+                          child: PropertyCard(
+                            property: properties[index],
+                            onCommentTap: () =>
+                                _showCommentSheet(context, properties[index]),
+                          ),
+                        ),
+                        childCount: properties.length,
+                      ),
                     ),
-                  );
-                },
+                  ),
+                  _buildFooterSliver(context, controller),
+                ],
               );
             },
           );
@@ -125,21 +166,54 @@ class _CategoryListingScreenState extends State<CategoryListingScreen> {
     );
   }
 
+  // ── Sliver de pied de liste ─────────────────────────────────────────────
+  Widget _buildFooterSliver(
+      BuildContext context, PropertyController controller) {
+    if (controller.isFetchingMore && controller.pagedProperties.isNotEmpty) {
+      return const SliverToBoxAdapter(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 24),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+    if (!controller.hasMore && controller.pagedProperties.isNotEmpty) {
+      return SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Center(
+            child: Text(
+              'Toutes les annonces sont affichées',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.outline,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+    return const SliverToBoxAdapter(child: SizedBox.shrink());
+  }
+
+  // ── Fiche de commentaires ───────────────────────────────────────────────
   void _showCommentSheet(BuildContext context, PropertyModel property) {
-    final TextEditingController commentController = TextEditingController();
+    final TextEditingController commentCtrl = TextEditingController();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => DraggableScrollableSheet(
+      builder: (ctx) => DraggableScrollableSheet(
         initialChildSize: 0.6,
-        builder: (_, scrollController) => Container(
+        builder: (_, scrollCtrl) => Container(
           decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            color: Theme.of(ctx).cardColor,
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(20)),
           ),
           child: Column(
             children: [
+              // Handle
               Container(
                 margin: const EdgeInsets.symmetric(vertical: 12),
                 width: 40,
@@ -149,43 +223,76 @@ class _CategoryListingScreenState extends State<CategoryListingScreen> {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const Text('Commentaires', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text(
+                'Commentaires',
+                style:
+                    TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               const Divider(),
+
+              // Liste des commentaires
               Expanded(
                 child: StreamBuilder<List<CommentModel>>(
-                  stream: Provider.of<PropertyController>(context, listen: false).getCommentsStream(property.id!),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) return const SkeletonList(itemCount: 4, itemHeight: 70);
-                    if (snapshot.hasError) return Center(child: Text('Erreur: ${snapshot.error}'));
+                  stream: Provider.of<PropertyController>(ctx,
+                          listen: false)
+                      .getCommentsStream(property.id!),
+                  builder: (ctx2, snapshot) {
+                    if (snapshot.connectionState ==
+                        ConnectionState.waiting) {
+                      return const SkeletonList(
+                          itemCount: 4, itemHeight: 70);
+                    }
+                    if (snapshot.hasError) {
+                      return Center(
+                          child: Text('Erreur: ${snapshot.error}'));
+                    }
                     final comments = snapshot.data ?? [];
-                    if (comments.isEmpty) return const Center(child: Text('Aucun commentaire pour le moment'));
+                    if (comments.isEmpty) {
+                      return const Center(
+                          child:
+                              Text('Aucun commentaire pour le moment'));
+                    }
                     return ListView.builder(
-                      controller: scrollController,
+                      controller: scrollCtrl,
                       itemCount: comments.length,
-                      itemBuilder: (context, index) {
-                        final comment = comments[index];
+                      itemBuilder: (_, index) {
+                        final c = comments[index];
                         return ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: Theme.of(context).primaryColor.withValues(alpha: 0.1),
-                            backgroundImage: (comment.authorProfilePicture != null && comment.authorProfilePicture!.isNotEmpty)
-                                    ? NetworkImage(comment.authorProfilePicture!)
-                                    : null,
-                            child: (comment.authorProfilePicture == null || comment.authorProfilePicture!.isEmpty)
-                                ? Text(comment.authorName.isNotEmpty ? comment.authorName[0].toUpperCase() : '?')
+                            backgroundColor:
+                                Theme.of(ctx2).primaryColor.withValues(alpha: 0.1),
+                            backgroundImage: (c.authorProfilePicture !=
+                                        null &&
+                                    c.authorProfilePicture!.isNotEmpty)
+                                ? NetworkImage(c.authorProfilePicture!)
+                                : null,
+                            child: (c.authorProfilePicture == null ||
+                                    c.authorProfilePicture!.isEmpty)
+                                ? Text(c.authorName.isNotEmpty
+                                    ? c.authorName[0].toUpperCase()
+                                    : '?')
                                 : null,
                           ),
-                          title: Text(comment.authorName),
-                          subtitle: Text(comment.content),
-                          trailing: Text(comment.createdAt.toIso8601String().substring(0, 10), style: const TextStyle(fontSize: 10)),
+                          title: Text(c.authorName),
+                          subtitle: Text(c.content),
+                          trailing: Text(
+                            c.createdAt
+                                .toIso8601String()
+                                .substring(0, 10),
+                            style: const TextStyle(fontSize: 10),
+                          ),
                         );
                       },
                     );
                   },
                 ),
               ),
+
+              // Champ d'envoi
               Padding(
                 padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+                  bottom:
+                      MediaQuery.of(ctx).viewInsets.bottom + 16,
                   left: 16,
                   right: 16,
                   top: 8,
@@ -194,39 +301,55 @@ class _CategoryListingScreenState extends State<CategoryListingScreen> {
                   children: [
                     Expanded(
                       child: TextField(
-                        controller: commentController,
+                        controller: commentCtrl,
                         decoration: InputDecoration(
                           hintText: 'Ajouter un commentaire...',
                           filled: true,
-                          fillColor: Theme.of(context).brightness == Brightness.dark ? Colors.white12 : const Color(0xFFF5F6F8),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          fillColor: Theme.of(ctx).brightness ==
+                                  Brightness.dark
+                              ? Colors.white12
+                              : const Color(0xFFF5F6F8),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding:
+                              const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
                     IconButton(
-                      icon: Icon(Icons.send, color: Theme.of(context).primaryColor),
+                      icon: Icon(Icons.send,
+                          color: Theme.of(ctx).primaryColor),
                       onPressed: () async {
-                        if (commentController.text.trim().isEmpty) return;
-                        // On doit importer auth_controller et comment_model
-                        final auth = Provider.of<import_auth.AuthController>(context, listen: false);
+                        if (commentCtrl.text.trim().isEmpty) return;
+                        final auth =
+                            Provider.of<import_auth.AuthController>(
+                                ctx,
+                                listen: false);
                         if (auth.currentUser == null) return;
                         final newComment = CommentModel(
                           propertyId: property.id!,
                           authorId: auth.currentUser!.id,
                           authorName: auth.currentUser!.name,
-                          content: commentController.text.trim(),
+                          content: commentCtrl.text.trim(),
                           createdAt: DateTime.now(),
                         );
-                        final success = await Provider.of<PropertyController>(context, listen: false).addComment(newComment);
+                        final success =
+                            await Provider.of<PropertyController>(
+                                    ctx,
+                                    listen: false)
+                                .addComment(newComment);
                         if (success) {
-                          commentController.clear();
+                          commentCtrl.clear();
                         } else {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
+                          if (ctx.mounted) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
                               const SnackBar(
-                                content: Text("Échec de l'envoi du commentaire"),
+                                content: Text(
+                                    "Échec de l'envoi du commentaire"),
                                 backgroundColor: Colors.red,
                               ),
                             );
@@ -244,4 +367,3 @@ class _CategoryListingScreenState extends State<CategoryListingScreen> {
     );
   }
 }
-

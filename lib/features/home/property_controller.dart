@@ -142,8 +142,14 @@ class PropertyController extends ChangeNotifier {
     } catch (e) {
       debugPrint('⚠️ Impossible de détecter le schéma: $e');
     }
-    // Fallback sur les colonnes standards essentielles
-    return ['owner_id', 'title', 'description', 'category', 'price', 'city', 'quartier', 'images', 'pieces'];
+    // Fallback sur les colonnes standards complètes
+    return [
+      'id', 'owner_id', 'title', 'description', 'category', 'price', 'city', 'quartier', 
+      'images', 'pieces', 'latitude', 'longitude', 'likes_count', 'video_urls', 
+      'is_owner_verified', 'price_duration', 'amenities', 'is_certified', 
+      'average_rating', 'review_count', 'transaction_type', 'rent_advance_months', 
+      'security_deposit_months', 'is_boosted', 'boost_expiry_date', 'boost_plan_type'
+    ];
   }
 
   /// Ajouter une propriété via Supabase
@@ -267,7 +273,7 @@ class PropertyController extends ChangeNotifier {
   bool get hasMore => _hasMore;
 
   /// Charger les propriétés avec pagination via Supabase (avec cache local)
-  Future<void> fetchPagedProperties({bool refresh = false, String? category}) async {
+  Future<void> fetchPagedProperties({bool refresh = false, String? category, String? city}) async {
     const int pageSize = 10;
     
     if (refresh) {
@@ -304,7 +310,17 @@ class PropertyController extends ChangeNotifier {
     try {
       final dynamic query = supabaseService.client.from('properties').select();
       dynamic filteredQuery = query;
-      if (category != null && category != 'Tous') filteredQuery = query.eq('category', category);
+      if (category != null && category != 'Tous') {
+        if (category == 'Appartements') {
+          filteredQuery = filteredQuery.or('category.eq.Appartement,category.eq.Appartements');
+        } else {
+          filteredQuery = filteredQuery.eq('category', category);
+        }
+      }
+      // Filtre optionnel par ville
+      if (city != null && city.isNotEmpty && city != 'Toutes les villes' && city != 'Toutes') {
+        filteredQuery = filteredQuery.eq('city', city);
+      }
       
       final from = _currentPage * pageSize;
       final to = from + pageSize - 1;
@@ -366,7 +382,11 @@ class PropertyController extends ChangeNotifier {
 
       // FILTRAGE SERVEUR EXCLUSIF (Performance Maximale)
       if (category != null && category != 'Toutes' && category != 'Tous') {
-        filterQuery = filterQuery.eq('category', category);
+        if (category == 'Appartements') {
+          filterQuery = filterQuery.or('category.eq.Appartement,category.eq.Appartements');
+        } else {
+          filterQuery = filterQuery.eq('category', category);
+        }
       }
       if (city != null && city != 'Toutes les villes' && city != 'Toutes') {
         filterQuery = filterQuery.eq('city', city);
@@ -447,7 +467,12 @@ class PropertyController extends ChangeNotifier {
 
     // Mode en-ligne : Supabase (Filtrage complet côté serveur)
     try {
-      dynamic query = supabaseService.client.from('properties').select().eq('category', category);
+      dynamic query = supabaseService.client.from('properties').select();
+      if (category == 'Appartements') {
+        query = query.or('category.eq.Appartement,category.eq.Appartements');
+      } else {
+        query = query.eq('category', category);
+      }
       
       if (city != null && city != 'Toutes les villes' && city != 'Toutes') {
         query = query.eq('city', city);
@@ -540,6 +565,9 @@ class PropertyController extends ChangeNotifier {
   Future<bool> deleteProperty(String propertyId) async {
     try {
       await supabaseService.client.from('properties').delete().eq('id', propertyId);
+      await _dbHelper.deleteProperty(propertyId); // Clean local cache
+      _streamVersion++; // Trigger UI refresh
+      notifyListeners();
       return true;
     } catch (e) {
       debugPrint('Err deleteProperty Supabase: $e');
@@ -806,19 +834,24 @@ class PropertyController extends ChangeNotifier {
         bytes = await video.readAsBytes();
       } else {
         try {
+          // Force la compression en qualité moyenne pour garantir l'utilisation du Baseline Profile (H.264)
+          // Ce qui règle le crash ExoPlayer (MediaCodecVideoRenderer) sur les téléphones comme le Huawei P30.
           final MediaInfo? mediaInfo = await VideoCompress.compressVideo(
             video.path,
             quality: VideoQuality.MediumQuality,
             deleteOrigin: false,
+            includeAudio: true,
           );
           
           if (mediaInfo != null && mediaInfo.file != null) {
             bytes = await mediaInfo.file!.readAsBytes();
+            debugPrint("Compression réussie. Nouvelle taille: ${bytes.length} bytes");
           } else {
+            debugPrint("La compression a renvoyé null. Upload de l'original.");
             bytes = await video.readAsBytes();
           }
         } catch (compressError) {
-          debugPrint('⚠️ Erreur compression vidéo, fallback: $compressError');
+          debugPrint("Erreur CRITIQUE pendant la compression vidéo: $compressError");
           bytes = await video.readAsBytes();
         }
       }
@@ -826,11 +859,17 @@ class PropertyController extends ChangeNotifier {
       final fileName = 'vid_${DateTime.now().microsecondsSinceEpoch}$extension';
       final path = 'properties/$userId/videos/$fileName';
       
-      final url = await supabaseService.uploadBytes('media', path, bytes);
+      final url = await supabaseService.uploadBytes(
+        'media', 
+        path, 
+        bytes,
+        contentType: 'video/mp4', // Spécifier explicitement le Content-Type
+      );
       return url;
     } catch (e) {
       debugPrint('Err compressAndUploadVideo Supabase: $e');
-      throw Exception('Video upload failed: $e');
+      return null; // Retourne null plutôt que de lancer une exception
+      // — Les appelants vérifient déjà (url != null) avant d'utiliser l'URL.
     }
   }
 

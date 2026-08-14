@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 import 'package:imobareld/core/constants/app_colors.dart';
 import 'package:imobareld/core/utils/share_utils.dart';
@@ -57,6 +58,11 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     super.initState();
     _loadOwnerInfo();
     _loadReviews();
+    if (widget.property.images.isEmpty && widget.property.videoUrls.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _initVideo(widget.property.videoUrls[0], 0);
+      });
+    }
   }
 
   @override
@@ -76,7 +82,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     try {
       if (widget.property.ownerId != null) {
         final response = await Supabase.instance.client
-            .from('users')
+            .from('profiles')
             .select()
             .eq('id', widget.property.ownerId!)
             .maybeSingle();
@@ -174,8 +180,17 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
         }
       }
     } catch (e) {
-      debugPrint('Erreur sélection vidéo: $e');
-      if (mounted) setState(() => _isUploadingVideo = false);
+      debugPrint('Erreur sélection/upload vidéo: $e');
+      if (mounted) {
+        setState(() => _isUploadingVideo = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de l\'ajout de la vidéo : $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 6),
+          ),
+        );
+      }
     }
   }
 
@@ -190,23 +205,91 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     _videoPlayerController?.dispose();
     _chewieController?.dispose();
 
-    _videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(url));
-    
     try {
-      await _videoPlayerController!.initialize();
+      if (kIsWeb) {
+        _videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(url));
+        await _videoPlayerController!.initialize();
+      } else {
+        // ESSAI 1 : Lecture en temps réel (Streaming réseau normal)
+        _videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(url));
+        try {
+          await _videoPlayerController!.initialize();
+        } catch (e) {
+          debugPrint("Streaming échoué, tentative locale... $e");
+          // ESSAI 2 : Fallback de secours (Téléchargement local pour les téléphones capricieux comme le Huawei P30)
+          _videoPlayerController?.dispose();
+          final File file = await DefaultCacheManager().getSingleFile(url);
+          _videoPlayerController = VideoPlayerController.file(file);
+          await _videoPlayerController!.initialize();
+        }
+      }
+      
+      double aspect = _videoPlayerController!.value.aspectRatio;
+      if (aspect <= 0.0 || aspect.isNaN) aspect = 16 / 9;
+
       _chewieController = ChewieController(
         videoPlayerController: _videoPlayerController!,
         autoPlay: true,
         looping: false,
-        aspectRatio: _videoPlayerController!.value.aspectRatio,
+        aspectRatio: aspect,
         errorBuilder: (context, errorMessage) {
-          return Center(child: Text('Erreur vidéo: $errorMessage', style: const TextStyle(color: Colors.white)));
+          // ExoPlayer/MediaCodec peut échouer sur certains appareils (ex: Huawei P30)
+          // On affiche un message clair plutôt que l'erreur technique brute
+          debugPrint('Chewie errorBuilder: $errorMessage');
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.videocam_off_rounded, color: Colors.white54, size: 48),
+                const SizedBox(height: 12),
+                const Text(
+                  'Impossible de lire cette vidéo',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Ce format vidéo n\'est peut-être pas\nsupporté par votre appareil.',
+                  style: TextStyle(color: Colors.white54, fontSize: 13),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          );
         },
       );
       if (mounted) setState(() => _isInitializingVideo = false);
     } catch (e) {
-      debugPrint("Erreur initialisation vidéo: $e");
-      if (mounted) setState(() => _isInitializingVideo = false);
+      // Erreur typique sur Huawei P30 : MediaCodecVideoRenderer / ExoPlaybackException
+      // On logge le détail technique mais on n'affiche pas l'erreur brute à l'utilisateur
+      debugPrint("Erreur initialisation vidéo (appareil incompatible ?): $e (URL: $url)");
+      if (mounted) {
+        setState(() {
+          _isInitializingVideo = false;
+          _activeVideoIndex = -1; // Réinitialise pour permettre une nouvelle tentative
+        });
+        // Message clair sans jargon technique
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.videocam_off_rounded, color: Colors.white, size: 20),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Impossible de lire cette vidéo sur cet appareil.',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.black87,
+            duration: const Duration(seconds: 5),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
     }
   }
 
@@ -469,6 +552,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                     chewieController: _chewieController,
                     propertyId: widget.property.id!,
                     onPageChanged: _onPageChanged,
+                    onVideoTap: (videoIdx, index) => _initVideo(widget.property.videoUrls[videoIdx], index),
                   ),
 
                   // 2. Contenu scrollable

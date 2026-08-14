@@ -30,7 +30,7 @@ class CategoryScrollBar extends StatelessWidget {
           return GestureDetector(
             onTap: () => onCategorySelected(cat['label'] as String),
             child: Container(
-              width: 80,
+              width: 95,
               margin: const EdgeInsets.only(right: 12),
               decoration: BoxDecoration(
                 color: isSelected ? theme.primaryColor : theme.cardColor,

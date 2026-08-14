@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:imobareld/core/constants/app_colors.dart';
+import 'package:imobareld/core/constants/user_roles.dart';
 import 'package:imobareld/core/widgets/cached_avatar.dart';
 import 'package:imobareld/features/auth/auth_controller.dart';
 import 'package:imobareld/features/chat/chat_detail_screen.dart';
@@ -115,21 +116,53 @@ class DetailContactBar extends StatelessWidget {
               final ownerId = owner?.id ?? property.ownerId;
               final ownerName = owner?.name ?? property.ownerName ?? 'Propriétaire';
 
-              // Si l'utilisateur est le PROPRIÉTAIRE de l'annonce
+              // ─────────────────────────────────────────────────────────────
+              // LOGIQUE DE CHAT AGENCE IMOBARELD
+              //
+              // • Propriétaire de l'annonce → sa boîte de réception (Inbox)
+              // • Admin (agence) → chat direct avec le vrai propriétaire
+              //   (pour coordonner la visite/transaction)
+              // • Client / Locataire → chat avec l'AGENCE uniquement
+              //   (le client ne contacte jamais le proprio directement)
+              // ─────────────────────────────────────────────────────────────
+
               if (currentUser.id == ownerId) {
-                // On le redirige vers sa liste de discussions (Inbox)
+                // Le proprio consulte sa propre annonce → Inbox
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const ChatListScreen()),
                 );
-              } else {
-                // Sinon (Locataire), on ouvre le chat avec le propriétaire
+              } else if (currentUser.isAdmin) {
+                // L'admin (agence) ouvre le chat avec le VRAI propriétaire
+                // pour coordonner la visite ou la transaction
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => ChatDetailScreen(
                       otherUserId: ownerId,
                       otherUserName: ownerName,
+                    ),
+                  ),
+                );
+              } else {
+                // Client / Locataire → chat avec l'AGENCE IMOBARELD
+                // L'agence joue le rôle d'intermédiaire
+                if (UserRoles.agencyUserId == 'REMPLACE_PAR_TON_UUID_SUPABASE') {
+                  // Sécurité : si l'ID n'est pas encore configuré, on prévient
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Configuration agence incomplète. Contactez-nous par téléphone.'),
+                      backgroundColor: AppColors.warning,
+                    ),
+                  );
+                  return;
+                }
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ChatDetailScreen(
+                      otherUserId: UserRoles.agencyUserId,
+                      otherUserName: UserRoles.agencyName,
                     ),
                   ),
                 );
@@ -190,7 +223,19 @@ class DetailContactBar extends StatelessWidget {
   }
 
   void _showContactOptions(BuildContext context, String name) {
-    const String adminPhone = '+22657428929'; // Numéro imposé pour tous les contacts (comme dans l'original)
+    final authController = context.read<AuthController>();
+    final isAdmin = authController.currentUser?.isAdmin ?? false;
+    
+    // Numéro de l'agence par défaut
+    const String agencyPhone = '+22657428929';
+    
+    // Le vrai numéro du propriétaire se trouve soit dans owner.phone, soit dans property.ownerPhone
+    final String? realOwnerPhone = (owner != null && owner!.phone != null && owner!.phone!.isNotEmpty)
+        ? owner!.phone
+        : (property.ownerPhone != null && property.ownerPhone!.isNotEmpty ? property.ownerPhone : null);
+    
+    // Si l'utilisateur est admin et que le propriétaire a un numéro valide
+    final String contactPhone = (isAdmin && realOwnerPhone != null) ? realOwnerPhone : agencyPhone;
 
     showModalBottomSheet(
       context: context,
@@ -206,7 +251,9 @@ class DetailContactBar extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Contacter $name',
+                  isAdmin && contactPhone != agencyPhone
+                      ? 'Contacter $name (Numéro Propriétaire)'
+                      : 'Contacter l\'agence',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -229,7 +276,7 @@ class DetailContactBar extends StatelessWidget {
                     Navigator.pop(context);
                     final Uri launchUri = Uri(
                       scheme: 'tel',
-                      path: adminPhone,
+                      path: contactPhone,
                     );
                     try {
                       if (await canLaunchUrl(launchUri)) {
@@ -257,8 +304,9 @@ class DetailContactBar extends StatelessWidget {
                   onTap: () async {
                     final messenger = ScaffoldMessenger.of(context);
                     Navigator.pop(context);
-                    final cleanNumber = adminPhone.replaceAll(RegExp(r'[^\d+]'), '');
-                    final Uri whatsappUri = Uri.parse('https://wa.me/$cleanNumber');
+                    final cleanNumber = contactPhone.replaceAll(RegExp(r'[^\d+]'), '');
+                    final String message = "Bonjour, je suis intéressé par le bien \"${property.title}\" (Réf: ${property.referenceCode}). Pouvez-vous me donner plus d'informations ?";
+                    final Uri whatsappUri = Uri.parse('https://wa.me/$cleanNumber?text=${Uri.encodeComponent(message)}');
 
                     try {
                       if (await canLaunchUrl(whatsappUri)) {
@@ -286,8 +334,15 @@ class DetailContactBar extends StatelessWidget {
                   onTap: () async {
                     final messenger = ScaffoldMessenger.of(context);
                     Navigator.pop(context);
-                    final cleanNumber = adminPhone.replaceAll(RegExp(r'[^\d+]'), '');
-                    final Uri smsUri = Uri(scheme: 'sms', path: cleanNumber);
+                    final cleanNumber = contactPhone.replaceAll(RegExp(r'[^\d+]'), '');
+                    final String message = "Bonjour, je suis intéressé par le bien \"${property.title}\" (Réf: ${property.referenceCode}). Pouvez-vous me donner plus d'informations ?";
+                    final Uri smsUri = Uri(
+                      scheme: 'sms', 
+                      path: cleanNumber,
+                      queryParameters: <String, String>{
+                        'body': message,
+                      },
+                    );
 
                     try {
                       if (await canLaunchUrl(smsUri)) {

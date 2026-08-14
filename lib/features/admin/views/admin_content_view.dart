@@ -14,7 +14,7 @@ class AdminContentView extends StatefulWidget {
 class _AdminContentViewState extends State<AdminContentView> {
   // 0 = Immobilier
   int _subIndex = 0;
-  String _selectedCity = 'Ouagadougou';
+  String _selectedCity = 'Toutes les villes';
   late PageController _pageController;
 
   static const List<String> _subLabels = ['Immobilier'];
@@ -205,9 +205,9 @@ class _AdminContentViewState extends State<AdminContentView> {
           width: double.maxFinite,
           height: 400,
           child: ListView.builder(
-            itemCount: BfLocations.cities.length,
+            itemCount: BfLocations.cities.length + 1,
             itemBuilder: (context, index) {
-              final c = BfLocations.cities[index];
+              final c = index == 0 ? 'Toutes les villes' : BfLocations.cities[index - 1];
               return ListTile(
                 title: Text(
                   c,

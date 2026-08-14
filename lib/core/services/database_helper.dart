@@ -281,10 +281,19 @@ class DatabaseHelper {
     if (kIsWeb) return [];
     final db = await database;
     if (db == null) return [];
+    
+    String whereClause = 'category = ?';
+    List<dynamic> whereArgs = [category];
+    
+    if (category == 'Appartements') {
+      whereClause = 'category IN (?, ?)';
+      whereArgs = ['Appartement', 'Appartements'];
+    }
+
     final List<Map<String, dynamic>> maps = await db.query(
       'properties',
-      where: 'category = ?',
-      whereArgs: [category],
+      where: whereClause,
+      whereArgs: whereArgs,
       orderBy: 'createdAt DESC',
     );
 
