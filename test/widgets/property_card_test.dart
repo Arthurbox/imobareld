@@ -36,7 +36,7 @@ class MockAuthController extends ChangeNotifier implements AuthController {
   Future<bool> register({required String name, required String email, required String password, required String userType, String? phone}) async => true;
   
   @override
-  Future<bool> signInWithGoogle({String userType = 'locataire'}) async => true;
+  Future<bool> signInWithGoogle({String? userType}) async => true;
   
   @override
   Future<void> toggleFavorite(String propertyId) async {}
@@ -78,7 +78,7 @@ class MockAuthController extends ChangeNotifier implements AuthController {
   Future<bool> renewSubscription(int months) async => true;
 
   @override
-  Future<bool> signInWithFacebook({String userType = 'locataire'}) async => true;
+  Future<bool> signInWithFacebook({String? userType}) async => true;
 
   @override
   Future<bool> deleteAccount() async => true;

@@ -53,13 +53,21 @@ class SupabaseService {
 
   // --- Storage ---
 
-  Future<String> uploadFile(String bucket, String path, dynamic file) async {
-    await client.storage.from(bucket).upload(path, file);
+  Future<String> uploadFile(String bucket, String path, dynamic file, {String? contentType}) async {
+    await client.storage.from(bucket).upload(
+      path, 
+      file,
+      fileOptions: FileOptions(contentType: contentType),
+    );
     return client.storage.from(bucket).getPublicUrl(path);
   }
 
-  Future<String> uploadBytes(String bucket, String path, dynamic bytes) async {
-    await client.storage.from(bucket).uploadBinary(path, bytes);
+  Future<String> uploadBytes(String bucket, String path, dynamic bytes, {String? contentType}) async {
+    await client.storage.from(bucket).uploadBinary(
+      path, 
+      bytes,
+      fileOptions: FileOptions(contentType: contentType),
+    );
     return client.storage.from(bucket).getPublicUrl(path);
   }
 }

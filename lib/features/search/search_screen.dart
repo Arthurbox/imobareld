@@ -39,7 +39,7 @@ class SearchScreenState extends State<SearchScreen> {
   Set<String> _requiredAmenities = {};
 
   final List<String> _categories = [
-    'Tous', 'Appartement', 'Cours Uniques', 'Cours Communes', 'Magasins', 'Boutiques', 'Terrains'
+    'Tous', 'Appartements', 'Cours Uniques', 'Cours Communes', 'Magasins', 'Boutiques', 'Terrains'
   ];
 
   /// L'option 'Toutes les villes' + toutes les villes du BF

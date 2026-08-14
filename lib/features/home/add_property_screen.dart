@@ -28,7 +28,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
   final _rentAdvanceController = TextEditingController();
   final _securityDepositController = TextEditingController();
   
-  String _selectedCategory = 'Appartement';
+  String _selectedCategory = 'Appartements';
   String _selectedCity = 'Ouagadougou';
   String _selectedQuartier = 'Ouaga 2000';
   String _selectedPeriod = 'mois'; // 'mois' ou 'jour'
@@ -43,10 +43,11 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
   final ImagePicker _picker = ImagePicker();
   static const int _maxMediaTotal = 20;
   LatLng? _selectedLocation;
+  bool _isSubmitting = false; // Flag pour empêcher les doubles clics
 
   List<String> _selectedAmenities = [];
 
-  final List<String> _categories = ['Appartement','Cours Uniques','Cours Communes', 'Magasins', 'Boutiques','Terrains'];
+  final List<String> _categories = ['Appartements','Cours Uniques','Cours Communes', 'Magasins', 'Boutiques','Terrains'];
   
   List<String> get _availableQuartiers => BfLocations.quartiersOf(_selectedCity);
 
@@ -141,11 +142,22 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
       _showLimitReached();
       return;
     }
-    final XFile? video = await _picker.pickVideo(source: source);
-    if (video != null) {
-      setState(() {
-        _selectedVideos.add(video);
-      });
+    try {
+      final XFile? video = await _picker.pickVideo(source: source);
+      if (video != null) {
+        setState(() {
+          _selectedVideos.add(video);
+        });
+      }
+    } catch (e) {
+      debugPrint('Erreur sélection vidéo: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Impossible de sélectionner la vidéo : $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -203,6 +215,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
   }
 
   Future<void> _submitFormat() async {
+    if (_isSubmitting) return; // Idempotence : on bloque si déjà en cours
     if (!_formKey.currentState!.validate()) return;
     if (_selectedImages.isEmpty && _existingImages.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -214,19 +227,46 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
     final auth = Provider.of<AuthController>(context, listen: false);
     final propertyCtrl = Provider.of<PropertyController>(context, listen: false);
 
+    setState(() => _isSubmitting = true);
+
     try {
       final List<String> uploadedUrls = await propertyCtrl.compressAndUploadImages(_selectedImages);
 
       final List<String> uploadedVideoUrls = [];
+      int videoFailCount = 0;
       for (var v in _selectedVideos) {
-        final url = await propertyCtrl.compressAndUploadVideo(v);
-        if (url != null) uploadedVideoUrls.add(url);
+        try {
+          final url = await propertyCtrl.compressAndUploadVideo(v);
+          if (url != null) {
+            uploadedVideoUrls.add(url);
+          } else {
+            videoFailCount++;
+          }
+        } catch (videoErr) {
+          debugPrint('Erreur upload vidéo individuelle: $videoErr');
+          videoFailCount++;
+        }
       }
 
-      if ((uploadedUrls.isEmpty && _selectedImages.isNotEmpty) || (uploadedVideoUrls.isEmpty && _selectedVideos.isNotEmpty)) {
+      // Prévenir l'utilisateur si certaines vidéos n'ont pas pu être envoyées
+      if (videoFailCount > 0 && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              videoFailCount == _selectedVideos.length
+                  ? 'Échec de l\'envoi de toutes les vidéos. Vérifiez votre connexion.'
+                  : '$videoFailCount vidéo(s) non envoyée(s) — les autres ont été ajoutées.',
+            ),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+
+      if (uploadedUrls.isEmpty && _selectedImages.isNotEmpty) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Erreur lors du téléchargement des médias')),
+          const SnackBar(content: Text('Erreur lors du téléchargement des images. Réessayez.')),
         );
         return;
       }
@@ -280,7 +320,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
             longitude: _selectedLocation?.longitude,
             isOwnerVerified: widget.propertyToEdit!.isOwnerVerified,            priceDuration: _selectedPeriod,
             transactionType: _selectedTransactionType,
-            amenities: (_selectedCategory == 'Appartement' || _selectedCategory == 'Cours Uniques' || _selectedCategory == 'Cours Communes') ? _selectedAmenities : [],
+            amenities: (_selectedCategory == 'Appartements' || _selectedCategory == 'Cours Uniques' || _selectedCategory == 'Cours Communes') ? _selectedAmenities : [],
             rentAdvanceMonths: _selectedTransactionType == 'Location' ? (int.tryParse(_rentAdvanceController.text) ?? 0) : 0,
             securityDepositMonths: _selectedTransactionType == 'Location' ? (int.tryParse(_securityDepositController.text) ?? 0) : 0,
         );
@@ -302,7 +342,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
           longitude: _selectedLocation?.longitude,
           isOwnerVerified: auth.currentUser!.isVerified,          priceDuration: _selectedPeriod,
           transactionType: _selectedTransactionType,
-          amenities: (_selectedCategory == 'Appartement' || _selectedCategory == 'Cours Uniques' || _selectedCategory == 'Cours Communes') ? _selectedAmenities : [],
+          amenities: (_selectedCategory == 'Appartements' || _selectedCategory == 'Cours Uniques' || _selectedCategory == 'Cours Communes') ? _selectedAmenities : [],
           rentAdvanceMonths: _selectedTransactionType == 'Location' ? (int.tryParse(_rentAdvanceController.text) ?? 0) : 0,
           securityDepositMonths: _selectedTransactionType == 'Location' ? (int.tryParse(_securityDepositController.text) ?? 0) : 0,
         );
@@ -325,6 +365,10 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
       debugPrint('Erreur lors de la publication: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: ${e.toString()}')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
       }
     }
   }
@@ -502,7 +546,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                                     _selectedCategory = v;
                                     if (v == 'Boutiques' || v == 'Magasins') _selectedPeriod = 'mois';
                                     if (v != 'Terrains') _selectedTransactionType = 'Location';
-                                    if (v != 'Appartement' && v != 'Cours Uniques' && v != 'Cours Communes') _selectedAmenities = [];
+                                    if (v != 'Appartements' && v != 'Cours Uniques' && v != 'Cours Communes') _selectedAmenities = [];
                                   });
                                 }
                               },
@@ -655,7 +699,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                         ),
                         const SizedBox(height: 24),
                       ],
-                      if (_selectedCategory == 'Appartement' || _selectedCategory == 'Cours Uniques' || _selectedCategory == 'Cours Communes') ...[
+                      if (_selectedCategory == 'Appartements' || _selectedCategory == 'Cours Uniques' || _selectedCategory == 'Cours Communes') ...[
                         const Text('Équipements et services', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                         const SizedBox(height: 12),
                         Wrap(
@@ -737,12 +781,12 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                         width: double.infinity,
                         height: 55,
                         child: ElevatedButton(
-                          onPressed: propertyCtrl.isLoading ? null : _submitFormat,
+                          onPressed: (propertyCtrl.isLoading || _isSubmitting) ? null : _submitFormat,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primaryOrange,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
-                          child: propertyCtrl.isLoading 
+                          child: (propertyCtrl.isLoading || _isSubmitting)
                             ? const CircularProgressIndicator(color: Colors.white)
                             : const Text('PUBLIER L\'ANNONCE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                         ),

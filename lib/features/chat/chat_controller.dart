@@ -175,12 +175,14 @@ class ChatController extends ChangeNotifier {
           .maybeSingle();
       final senderName = myProfile?['user_name'] ?? 'Nouveau message';
 
-      // 3. Appel à la Cloud Function Firebase
-      // Assure-toi que cette URL correspond bien à ta fonction une fois déployée sur le plan Blaze
-      final url = Uri.parse('https://us-central1-imobareld.cloudfunctions.net/sendChatPush');
+      // 3. Appel à la Cloud Function Firebase (Gen 2 - Cloud Run)
+      final url = Uri.parse('https://sendchatpush-6kjibs7jqa-uc.a.run.app');
       final res = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Internal-Key': 'imobareld_push_secret_2026_X9kZ3mR7',
+        },
         body: jsonEncode({
           'fcm_token': fcmToken,
           'title': senderName,

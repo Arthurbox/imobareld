@@ -6,11 +6,14 @@ class SkeletonBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final double bannerHeight = screenWidth > 800 ? 300.0 : 220.0;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: const SkeletonBase(
+      child: SkeletonBase(
         width: double.infinity,
-        height: 220,
+        height: bannerHeight,
         borderRadius: 20,
       ),
     );

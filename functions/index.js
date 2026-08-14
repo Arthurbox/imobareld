@@ -7,9 +7,9 @@ admin.initializeApp();
 
 exports.sendChatPush = onRequest(async (req, res) => {
   // Configurer CORS (restreint au domaine officiel)
-  res.set("Access-Control-Allow-Origin", "https://imobareld.app");
+  res.set("Access-Control-Allow-Origin", "*");
   res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.set("Access-Control-Allow-Headers", "Content-Type, X-Internal-Key");
 
   // Si c'est une requête de preflight, on s'arrête là et on retourne un petit 204
   if (req.method === "OPTIONS") {
@@ -17,16 +17,11 @@ exports.sendChatPush = onRequest(async (req, res) => {
     return;
   }
 
-  // ✅ Vérification du token Firebase Authentication
-  const authHeader = req.headers.authorization || "";
-  const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
-  if (!idToken) {
-    return res.status(401).send({ success: false, message: "Token d'authentification manquant." });
-  }
-  try {
-    await admin.auth().verifyIdToken(idToken);
-  } catch (e) {
-    return res.status(403).send({ success: false, message: "Token invalide ou expiré." });
+  // ✅ Vérification par clé interne (compatible Supabase Auth)
+  const internalKey = req.headers["x-internal-key"] || "";
+  const expectedKey = process.env.INTERNAL_PUSH_SECRET || "";
+  if (!expectedKey || internalKey !== expectedKey) {
+    return res.status(401).send({ success: false, message: "Clé interne invalide." });
   }
 
   // Vérifier qu'on a bien un payload
@@ -145,8 +140,8 @@ exports.createGeniusPayCheckout = onCall(async (request) => {
       type: type || "boost",
       user_id: userId
     },
-    return_url: "imobareldapp://payment/return",
-    cancel_url: "imobareldapp://payment/cancel"
+    return_url: "https://imobareld.app/payment/success",
+    cancel_url: "https://imobareld.app/payment/cancel"
   };
 
   try {
@@ -250,7 +245,7 @@ exports.geniusPayWebhook = onRequest(async (req, res) => {
 
         if (metadata.type === "subscription" && metadata.user_id) {
           const userId = metadata.user_id;
-          await supabase.from("users").update({
+          await supabase.from("profiles").update({
             subscription_status: "active",
             subscription_ends_at: endDate.toISOString()
           }).eq("id", userId);
@@ -274,13 +269,13 @@ exports.geniusPayWebhook = onRequest(async (req, res) => {
           if (userId) {
             // Récupérer l'email de l'utilisateur depuis Supabase (s'il est authentifié)
             const { data: userRecord } = await supabase
-              .from("users")
-              .select("email, name")
+              .from("profiles")
+              .select("email, user_name")
               .eq("id", userId)
               .single();
               
             const userEmail = userRecord?.email || data.customer?.email;
-            const userName = userRecord?.name || data.customer?.name || "Client";
+            const userName = userRecord?.user_name || data.customer?.name || "Client";
 
             if (userEmail) {
               const resendApiKey = process.env.RESEND_API_KEY;

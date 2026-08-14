@@ -20,6 +20,31 @@ class AdminImmoSubView extends StatefulWidget {
 
 class _AdminImmoSubViewState extends State<AdminImmoSubView> {
   final Set<String> _selectedPropertyIds = {};
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  late Future<List<PropertyModel>> _propertiesFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    final propertyController = Provider.of<PropertyController>(context, listen: false);
+    _propertiesFuture = propertyController.getPropertiesByCityAdmin(widget.city);
+  }
+
+  @override
+  void didUpdateWidget(covariant AdminImmoSubView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.city != widget.city || oldWidget.filterVideosOnly != widget.filterVideosOnly) {
+      final propertyController = Provider.of<PropertyController>(context, listen: false);
+      _propertiesFuture = propertyController.getPropertiesByCityAdmin(widget.city);
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   void _toggleSelection(String id) {
     setState(() {
@@ -103,7 +128,7 @@ class _AdminImmoSubViewState extends State<AdminImmoSubView> {
             )
           : null,
       body: FutureBuilder<List<PropertyModel>>(
-        future: propertyController.getPropertiesByCityAdmin(widget.city),
+        future: _propertiesFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) return const SkeletonList(itemCount: 4, itemHeight: 120);
 
@@ -117,46 +142,80 @@ class _AdminImmoSubViewState extends State<AdminImmoSubView> {
             properties = properties.where((p) => p.videoUrls.isNotEmpty).toList();
           }
 
-          if (properties.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    widget.filterVideosOnly ? Icons.video_library_outlined : Icons.home_outlined, 
-                    size: 64, 
-                    color: theme.dividerColor
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    widget.filterVideosOnly ? 'Aucune vidéo à ${widget.city}' : 'Aucun bien à ${widget.city}', 
-                    style: TextStyle(color: theme.textTheme.bodyMedium?.color)
-                  ),
-                ],
-              ),
-            );
+          // Filtrage par recherche
+          if (_searchQuery.isNotEmpty) {
+            final q = _searchQuery.toLowerCase();
+            properties = properties.where((p) => 
+                p.referenceCode.toLowerCase().contains(q) || 
+                p.title.toLowerCase().contains(q)
+            ).toList();
           }
 
-          return GridView.builder(
-            padding: const EdgeInsets.all(12).copyWith(bottom: 80), // Padding pour le bouton flottant
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: 0.78,
-            ),
-            itemCount: properties.length,
-            itemBuilder: (context, index) {
-              final property = properties[index];
-              final isSelected = _selectedPropertyIds.contains(property.id);
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Rechercher par référence (REF-...) ou titre',
+                    prefixIcon: const Icon(Icons.search),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                  ),
+                  onChanged: (val) {
+                    setState(() {
+                      _searchQuery = val;
+                    });
+                  },
+                ),
+              ),
+              Expanded(
+                child: properties.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              widget.filterVideosOnly ? Icons.video_library_outlined : Icons.home_outlined, 
+                              size: 64, 
+                              color: theme.dividerColor
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              _searchQuery.isNotEmpty
+                                  ? 'Aucun résultat pour "$_searchQuery"'
+                                  : (widget.filterVideosOnly ? 'Aucune vidéo à ${widget.city}' : 'Aucun bien à ${widget.city}'),
+                              style: TextStyle(color: theme.textTheme.bodyMedium?.color)
+                            ),
+                          ],
+                        ),
+                      )
+                    : GridView.builder(
+                        padding: const EdgeInsets.all(12).copyWith(bottom: 80), // Padding pour le bouton flottant
+                        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: 220,
+                          crossAxisSpacing: 10,
+                          mainAxisSpacing: 10,
+                          childAspectRatio: 0.85,
+                        ),
+                        itemCount: properties.length,
+                        itemBuilder: (context, index) {
+                          final property = properties[index];
+                          final isSelected = _selectedPropertyIds.contains(property.id);
 
-              return AdminImmoCard(
-                property: property, 
-                adminCtrl: adminCtrl,
-                isSelected: isSelected,
-                onSelect: () => _toggleSelection(property.id!),
-              );
-            },
+                          return AdminImmoCard(
+                            property: property, 
+                            adminCtrl: adminCtrl,
+                            isSelected: isSelected,
+                            onSelect: () => _toggleSelection(property.id!),
+                          );
+                        },
+                      ),
+              ),
+            ],
           );
         },
       ),
@@ -211,22 +270,22 @@ class AdminImmoCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Image
-                Stack(
-                  children: [
-                    ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                      child: property.images.isNotEmpty
-                          ? CachedImage(
-                              imageUrl: property.images.first,
-                              height: 110,
-                              width: double.infinity,
-                            )
-                          : Container(
-                              height: 110,
-                              color: isDark ? Colors.grey[800] : Colors.grey[200],
-                              child: const Center(child: Icon(Icons.apartment, size: 36)),
-                            ),
-                    ),
+                Expanded(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      ClipRRect(
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                        child: property.images.isNotEmpty
+                            ? CachedImage(
+                                imageUrl: property.images.first,
+                                width: double.infinity,
+                              )
+                            : Container(
+                                color: isDark ? Colors.grey[800] : Colors.grey[200],
+                                child: const Center(child: Icon(Icons.apartment, size: 36)),
+                              ),
+                      ),
                     if (property.videoUrls.isNotEmpty)
                       Positioned(
                         top: 5,
@@ -242,7 +301,8 @@ class AdminImmoCard extends StatelessWidget {
                       ),
                   ],
                 ),
-                // Titre & infos
+              ),
+              // Titre & infos
                 Padding(
                   padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
                   child: Row(

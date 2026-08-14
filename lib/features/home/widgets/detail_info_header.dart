@@ -93,7 +93,7 @@ class DetailInfoHeader extends StatelessWidget {
         ),
         const SizedBox(height: 15),
 
-        // ── Titre + Badge certifié ──
+        // ── Titre + Badge certifié + Réf ──
         Wrap(
           crossAxisAlignment: WrapCrossAlignment.center,
           spacing: 12,
@@ -104,6 +104,22 @@ class DetailInfoHeader extends StatelessWidget {
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: theme.textTheme.titleLarge?.color,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.grey.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.grey.withOpacity(0.3)),
+              ),
+              child: Text(
+                'Réf: ${property.referenceCode}',
+                style: const TextStyle(
+                  color: Colors.grey,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 10,
+                ),
               ),
             ),
             if (property.isCertified)
