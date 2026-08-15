@@ -56,6 +56,15 @@ class AdminController with ChangeNotifier {
     }
   }
 
+  /// Rafraîchit manuellement les statistiques et notifie toutes les vues
+  Future<void> refreshStats() async {
+    final stats = await getStats();
+    if (!_statsController.isClosed) {
+      _statsController.add(stats);
+    }
+    notifyListeners();
+  }
+
   /// Vérifie si un ID est en cours de suppression (Optimistic UI)
   bool isPendingDeletion(String id) => _pendingDeletions.contains(id);
 
