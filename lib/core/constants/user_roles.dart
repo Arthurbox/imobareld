@@ -1,17 +1,25 @@
-/// Constantes pour la gestion des rôles utilisateurs
+/// Constantes pour la gestion des rôles utilisateurs.
+///
+/// Les identifiants sensibles (email admin, UUID agence) sont chargés
+/// depuis les variables d'environnement via --dart-define-from-file=.env
 class UserRoles {
   static const String user = 'locataire';
   static const String owner = 'propriétaire';
   static const String admin = 'admin';
 
-  /// Email de l'Administrateur Suprême
-  static const String supremeAdminEmail = 'afrmd05@gmail.com';
+  /// Email de l'Administrateur Suprême (chargé depuis les variables d'environnement)
+  static const String supremeAdminEmail = String.fromEnvironment(
+    'SUPREME_ADMIN_EMAIL',
+    defaultValue: '',
+  );
 
-  /// ID Supabase du compte agence (compte admin principal)
-  /// ⚠️ Remplace cette valeur par ton vrai UUID Supabase
-  /// → Retrouve-le dans Supabase > Authentication > Users > afrmd05@gmail.com
-  static const String agencyUserId = '7f6f315e-1766-49c0-8e80-d1fe9b909c49';
+  /// ID Supabase du compte agence (chargé depuis les variables d'environnement)
+  static const String agencyUserId = String.fromEnvironment(
+    'AGENCY_USER_ID',
+    defaultValue: '',
+  );
 
   /// Nom affiché pour l'agence dans le chat
   static const String agencyName = 'IMOBARELD Agence';
 }
+

@@ -7,7 +7,15 @@ admin.initializeApp();
 
 exports.sendChatPush = onRequest(async (req, res) => {
   // Configurer CORS (restreint au domaine officiel)
-  res.set("Access-Control-Allow-Origin", "*");
+  const allowedOrigins = [
+    "https://imobareld.app",
+    "https://www.imobareld.app",
+    "https://imobareld.web.app",
+  ];
+  const origin = req.headers.origin || "";
+  if (allowedOrigins.includes(origin)) {
+    res.set("Access-Control-Allow-Origin", origin);
+  }
   res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.set("Access-Control-Allow-Headers", "Content-Type, X-Internal-Key");
 

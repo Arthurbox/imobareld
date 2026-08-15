@@ -55,7 +55,22 @@ class _AdminDashboardState extends State<AdminDashboard> {
         actions: [
           IconButton(
             icon: Icon(Icons.refresh, color: theme.primaryColor),
-            onPressed: () => setState(() {}),
+            onPressed: () {
+              // Recharger les statistiques depuis Supabase
+              final adminCtrl = Provider.of<AdminController>(context, listen: false);
+              final messenger = ScaffoldMessenger.of(context);
+              adminCtrl.refreshStats().then((_) {
+                if (!mounted) return;
+                setState(() {});
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('Données actualisées ✅'),
+                    duration: Duration(seconds: 1),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              });
+            },
           ),
         ],
       ),
