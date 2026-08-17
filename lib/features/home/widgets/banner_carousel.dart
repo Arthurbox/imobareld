@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:imobareld/models/ad_model.dart';
 import 'package:imobareld/core/widgets/cached_image.dart';
@@ -23,15 +21,27 @@ class BannerCarousel extends StatefulWidget {
 }
 
 class _BannerCarouselState extends State<BannerCarousel> {
-  late PageController _pageController;
+  PageController? _pageController;
   Timer? _timer;
   int _currentPage = 0;
   static const int _virtualItemCount = 10000;
 
+  /// Calcule la page initiale centrée pour un défilement infini équilibré
+  int _calcInitialPage(int adsCount) {
+    if (adsCount == 0) return 0;
+    final mid = _virtualItemCount ~/ 2;
+    return mid - (mid % adsCount);
+  }
+
   @override
   void initState() {
     super.initState();
-    final initialPage = widget.ads.isEmpty ? 0 : (_virtualItemCount ~/ 2) - ((_virtualItemCount ~/ 2) % widget.ads.length);
+    _initController();
+  }
+
+  void _initController() {
+    final initialPage = _calcInitialPage(widget.ads.length);
+    _pageController?.dispose();
     _pageController = PageController(initialPage: initialPage);
     _currentPage = widget.ads.isEmpty ? 0 : initialPage % widget.ads.length;
     _startTimer();
@@ -39,9 +49,16 @@ class _BannerCarouselState extends State<BannerCarousel> {
 
   void _startTimer() {
     _timer?.cancel();
+    // Ne démarrer le timer que s'il y a au moins 2 publicités à faire défiler
+    if (widget.ads.length < 2) return;
     _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
-      if (widget.ads.length > 1 && _pageController.hasClients) {
-        _pageController.nextPage(
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      final controller = _pageController;
+      if (controller != null && controller.hasClients) {
+        controller.nextPage(
           duration: const Duration(milliseconds: 800),
           curve: Curves.easeInOut,
         );
@@ -52,7 +69,12 @@ class _BannerCarouselState extends State<BannerCarousel> {
   @override
   void didUpdateWidget(BannerCarousel oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.ads.length != oldWidget.ads.length) {
+    // Les ads sont arrivées (passage de vide → non vide) :
+    // on réinitialise complètement le controller et le timer
+    if (oldWidget.ads.isEmpty && widget.ads.isNotEmpty) {
+      _initController();
+    } else if (widget.ads.length != oldWidget.ads.length) {
+      // Nombre d'ads changé (ajout / suppression) : juste relancer le timer
       _startTimer();
     }
   }
@@ -60,7 +82,7 @@ class _BannerCarouselState extends State<BannerCarousel> {
   @override
   void dispose() {
     _timer?.cancel();
-    _pageController.dispose();
+    _pageController?.dispose();
     super.dispose();
   }
 
@@ -76,6 +98,10 @@ class _BannerCarouselState extends State<BannerCarousel> {
 
     if (widget.ads.isEmpty) return const SizedBox.shrink();
 
+    // Guard : le controller peut être null si initState n'a pas encore terminé
+    final controller = _pageController;
+    if (controller == null) return const SizedBox.shrink();
+
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 1100),
@@ -84,13 +110,14 @@ class _BannerCarouselState extends State<BannerCarousel> {
             SizedBox(
               height: bannerHeight,
               child: PageView.builder(
-                controller: _pageController,
+                controller: controller,
+                physics: widget.ads.length == 1 ? const NeverScrollableScrollPhysics() : null,
                 onPageChanged: (index) {
                   setState(() {
                     _currentPage = index % widget.ads.length;
                   });
                 },
-                itemCount: _virtualItemCount,
+                itemCount: widget.ads.length == 1 ? 1 : _virtualItemCount,
                 itemBuilder: (context, index) {
                   final adIndex = index % widget.ads.length;
                   final ad = widget.ads[adIndex];

@@ -22,13 +22,13 @@ class _AdminImmoSubViewState extends State<AdminImmoSubView> {
   final Set<String> _selectedPropertyIds = {};
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-  late Future<List<PropertyModel>> _propertiesFuture;
+  late Stream<List<PropertyModel>> _propertiesStream;
 
   @override
   void initState() {
     super.initState();
     final propertyController = Provider.of<PropertyController>(context, listen: false);
-    _propertiesFuture = propertyController.getPropertiesByCityAdmin(widget.city);
+    _propertiesStream = propertyController.getPropertiesByCityAdminStream(widget.city);
   }
 
   @override
@@ -36,7 +36,7 @@ class _AdminImmoSubViewState extends State<AdminImmoSubView> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.city != widget.city || oldWidget.filterVideosOnly != widget.filterVideosOnly) {
       final propertyController = Provider.of<PropertyController>(context, listen: false);
-      _propertiesFuture = propertyController.getPropertiesByCityAdmin(widget.city);
+      _propertiesStream = propertyController.getPropertiesByCityAdminStream(widget.city);
     }
   }
 
@@ -127,8 +127,8 @@ class _AdminImmoSubViewState extends State<AdminImmoSubView> {
               label: Text('Supprimer (${_selectedPropertyIds.length})', style: const TextStyle(color: Colors.white)),
             )
           : null,
-      body: FutureBuilder<List<PropertyModel>>(
-        future: _propertiesFuture,
+      body: StreamBuilder<List<PropertyModel>>(
+        stream: _propertiesStream,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) return const SkeletonList(itemCount: 4, itemHeight: 120);
 

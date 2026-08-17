@@ -190,20 +190,25 @@ class AuthController extends ChangeNotifier {
     try {
       final session = supabaseService.client.auth.currentSession;
 
-      // ── Gestion du userType après redirection OAuth (Web) ──
+      // ── Gestion du userType après redirection OAuth WEB ──
+      // Sur Mobile, le rôle est géré directement dans signInWithGoogle/signInWithFacebook
       if (session != null && kIsWeb) {
         final prefs = await SharedPreferences.getInstance();
         final pendingType = prefs.getString('pending_user_type');
         if (pendingType != null) {
-          debugPrint('🔄 Profil post-OAuth : détection du rôle en attente ($pendingType)');
+          debugPrint('🌐 [Web] Profil post-OAuth : application du rôle en attente ($pendingType)');
+          // Attendre que le trigger Supabase ait créé le profil de base
+          await Future.delayed(const Duration(milliseconds: 1500));
           await _manualProfileSync(
             id: session.user.id, 
             name: session.user.userMetadata?['full_name'] as String? ?? 
-                  session.user.userMetadata?['name'] as String? ?? '', 
+                  session.user.userMetadata?['name'] as String? ?? 'Utilisateur', 
             email: session.user.email ?? '', 
             userType: pendingType,
+            forceUpdateRole: true,
           );
           await prefs.remove('pending_user_type');
+          debugPrint('✅ [Web] Rôle $pendingType appliqué avec succès');
         }
       }
 
@@ -516,11 +521,7 @@ class AuthController extends ChangeNotifier {
         
         await supabaseService.client.auth.signInWithOAuth(
           sb.OAuthProvider.google,
-          redirectTo: kIsWeb
-              ? (kDebugMode
-                  ? 'http://localhost:5000'
-                  : 'https://imobareld.web.app')
-              : null,
+          redirectTo: null,
           authScreenLaunchMode: sb.LaunchMode.platformDefault,
         );
         
@@ -570,13 +571,10 @@ class AuthController extends ChangeNotifier {
       );
 
       if (response.user != null) {
-        // Attendre que le trigger SQL crée le profil si besoin
-        await Future.delayed(const Duration(milliseconds: 800));
+        final userId = response.user!.id;
+        final userEmail = response.user!.email ?? '';
         
-        // 1. Tenter d'initialiser l'utilisateur pour voir s'il a déjà un profil
-        bool success = await initUser();
-        
-        // 2. Extraire le nom depuis Google ou les métadonnées Supabase
+        // 1. Extraire le nom depuis Google ou les métadonnées Supabase
         String? googleName = googleUser.displayName;
         if (googleName == null || googleName.isEmpty) {
           googleName = response.user?.userMetadata?['full_name'] as String?;
@@ -584,31 +582,47 @@ class AuthController extends ChangeNotifier {
         if (googleName == null || googleName.isEmpty) {
           googleName = response.user?.userMetadata?['name'] as String?;
         }
+        final String displayName = (googleName != null && googleName.isNotEmpty) ? googleName : 'Utilisateur';
         
-        final String expectedName = (googleName != null && googleName.isNotEmpty) 
-            ? googleName 
-            : (_currentUser?.name ?? '');
-
-        // 3. Mettre à jour ou Créer le profil si nécessaire
-        final currentName = _currentUser?.name ?? '';
-        final currentType = _currentUser?.userType ?? 'locataire';
+        // 2. Attendre que le trigger SQL crée le profil de base (locataire par défaut)
+        await Future.delayed(const Duration(milliseconds: 1200));
         
-        final bool isNewOrMissingName = !success || _currentUser == null || currentName.isEmpty || currentName == 'Utilisateur';
-        final bool isTypeWrong = userType != null && currentType != userType;
+        // 3. Si l'utilisateur a choisi un rôle, synchroniser DIRECTEMENT (sans passer par initUser)
+        if (userType != null) {
+          debugPrint('📱 [Mobile] Synchronisation profil Google: $displayName | Rôle: $userType');
+          // Essayer jusqu'à 3 fois pour contrer les éventuels problèmes de timing
+          for (int attempt = 1; attempt <= 3; attempt++) {
+            try {
+              await _manualProfileSync(
+                id: userId,
+                name: displayName,
+                email: userEmail,
+                userType: userType,
+                forceUpdateRole: true,
+              );
+              debugPrint('✅ [Mobile] Sync réussie (tentative $attempt)');
+              break;
+            } catch (syncError) {
+              debugPrint('⚠️ [Mobile] Sync tentative $attempt échouée: $syncError');
+              if (attempt < 3) await Future.delayed(const Duration(milliseconds: 500));
+            }
+          }
+        }
         
-        if ((isNewOrMissingName || isTypeWrong) && expectedName.isNotEmpty) {
-           final typeToSave = userType ?? currentType;
-           debugPrint('🔄 Synchronisation du profil Google: $expectedName | Type: $typeToSave (ancien: $currentType)');
-             await _manualProfileSync(
-               id: response.user!.id, 
-               name: expectedName, 
-               email: response.user!.email ?? '',
-               userType: typeToSave,
-               phone: _currentUser?.phone, // Conserver le téléphone existant si présent
-               forceUpdateRole: isTypeWrong || isNewOrMissingName,
-             );
-           // Rafraîchir l'utilisateur local après synchronisation
-           success = await initUser();
+        // 4. Charger le profil final depuis Supabase
+        final bool success = await initUser();
+        
+        // 5. Vérification : si le type ne correspond toujours pas, réessayer
+        if (userType != null && _currentUser?.userType != userType) {
+          debugPrint('⚠️ [Mobile] Type toujours incorrect après sync (${_currentUser?.userType} != $userType), nouvel essai...');
+          await _manualProfileSync(
+            id: userId,
+            name: displayName,
+            email: userEmail,
+            userType: userType,
+            forceUpdateRole: true,
+          );
+          await initUser();
         }
 
         _isLoading = false;
@@ -643,8 +657,8 @@ class AuthController extends ChangeNotifier {
       _errorMessage = null;
       notifyListeners();
 
-      // Sauvegarder le userType souhaité pour le récupérer après redirection (Web)
-      if (kIsWeb && userType != null) {
+      // Sauvegarder le userType souhaité pour le récupérer après redirection
+      if (userType != null) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('pending_user_type', userType);
       }
@@ -652,11 +666,7 @@ class AuthController extends ChangeNotifier {
       // Supabase gère le flux OAuth Facebook
       await supabaseService.client.auth.signInWithOAuth(
         sb.OAuthProvider.facebook,
-        redirectTo: kIsWeb
-            ? (kDebugMode
-                ? 'http://localhost:5000'
-                : 'https://imobareld.web.app')
-            : 'imobareldapp://',
+        redirectTo: kIsWeb ? null : 'imobareldapp://',
         authScreenLaunchMode: sb.LaunchMode.platformDefault,
       );
 
@@ -702,7 +712,7 @@ class AuthController extends ChangeNotifier {
         final Map<String, dynamic> metadata = {
           'name': name,
         };
-        if (!hasExistingType) {
+        if (!hasExistingType || forceUpdateRole) {
           metadata['user_type'] = userType;
           metadata['userType'] = userType;
         }
@@ -735,16 +745,16 @@ class AuthController extends ChangeNotifier {
         updateData['phone'] = phone;
       }
 
-      // 3. Mise à jour ou insertion directe
-      if (existingProfile != null) {
-        await supabaseService.client.from('profiles').update(updateData).eq('id', id);
-      } else {
-        updateData['id'] = id;
-        await supabaseService.client.from('profiles').insert(updateData);
-      }
+      // 3. Mise à jour ou insertion directe via upsert
+      updateData['id'] = id;
+      debugPrint('📤 Envoi upsert profil: $updateData');
+      await supabaseService.client.from('profiles').upsert(updateData);
+      debugPrint('✅ Upsert profil réussi');
 
     } catch (e) {
-      debugPrint('🚨 Erreur manualProfileSync: $e');
+      debugPrint('🚨 ERREUR CRITIQUE manualProfileSync: $e');
+      // Propager l'erreur pour que les appelants sachent que la sync a échoué
+      rethrow;
     }
   }
 

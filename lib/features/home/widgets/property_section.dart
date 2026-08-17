@@ -27,8 +27,7 @@ class PropertySection extends StatefulWidget {
 }
 
 class _PropertySectionState extends State<PropertySection> {
-  late Future<List<PropertyModel>> _propertiesFuture;
-  int _lastStreamVersion = -1;
+  late Stream<List<PropertyModel>> _propertiesStream;
 
   @override
   void initState() {
@@ -38,8 +37,7 @@ class _PropertySectionState extends State<PropertySection> {
 
   void _initStream() {
     final propertyController = Provider.of<PropertyController>(context, listen: false);
-    _lastStreamVersion = propertyController.streamVersion;
-    _propertiesFuture = propertyController.getPropertiesForSection(
+    _propertiesStream = propertyController.getPropertiesForSectionStream(
       category: widget.category,
       city: widget.city,
       limit: 20,
@@ -60,18 +58,7 @@ class _PropertySectionState extends State<PropertySection> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // Écoute streamVersion pour recharger le flux quand une propriété est publiée/modifiée
-    return Consumer<PropertyController>(
-      builder: (context, controller, _) {
-        // Si la version a changé (nouvelle publication/modification), recréer le flux
-        if (controller.streamVersion != _lastStreamVersion) {
-          _lastStreamVersion = controller.streamVersion;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) setState(() => _initStream());
-          });
-        }
-
-        return Column(
+    return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 24),
@@ -125,8 +112,8 @@ class _PropertySectionState extends State<PropertySection> {
               ),
             ),
             const SizedBox(height: 8),
-            FutureBuilder<List<PropertyModel>>(
-              future: _propertiesFuture,
+            StreamBuilder<List<PropertyModel>>(
+              stream: _propertiesStream,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return SizedBox(
@@ -221,7 +208,5 @@ class _PropertySectionState extends State<PropertySection> {
             ),
           ],
         );
-      },
-    );
   }
 }

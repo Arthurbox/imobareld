@@ -43,7 +43,18 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
   final ImagePicker _picker = ImagePicker();
   static const int _maxMediaTotal = 20;
   LatLng? _selectedLocation;
-  bool _isSubmitting = false; // Flag pour empêcher les doubles clics
+
+  // ── Idempotence ──────────────────────────────────────────────────────────────
+  // [1] _isSubmitting : verrou UI synchrone, posé AVANT tout await
+  //     Empêche les doubles-clics, même ultra-rapides.
+  bool _isSubmitting = false;
+
+  // [2] _submissionToken : clé UUID unique générée à l'ouverture du formulaire.
+  //     Transmise à Supabase comme idempotency_key pour déduplication côté serveur.
+  //     Régénérée après SUCCÈS seulement — un échec réseau laisse le même token
+  //     pour que la rétentative soit idem potente (ne crée pas de doublon).
+  late String _submissionToken;
+  // ─────────────────────────────────────────────────────────────────────────────
 
   List<String> _selectedAmenities = [];
 
@@ -68,6 +79,8 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
   @override
   void initState() {
     super.initState();
+    // Générer un token d'idempotence unique pour cette session de formulaire
+    _submissionToken = _generateToken();
     if (widget.propertyToEdit != null) {
       final p = widget.propertyToEdit!;
       _titleController.text = p.title;
@@ -214,8 +227,22 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
     );
   }
 
+  /// Génère un token unique sans dépendance externe
+  String _generateToken() {
+    final now = DateTime.now().microsecondsSinceEpoch;
+    final rand = (Object().hashCode ^ now).abs();
+    // Format simple : timestamp_hex-hashcode_hex
+    return '${now.toRadixString(16)}-${rand.toRadixString(16)}';
+  }
+
   Future<void> _submitFormat() async {
-    if (_isSubmitting) return; // Idempotence : on bloque si déjà en cours
+    // ── Verrou atomique ──────────────────────────────────────────────────────
+    // SET AVANT tout await : empêche même le tap ultra-rapide (< 16ms)
+    if (_isSubmitting) {
+      debugPrint('⚠️ [Idempotence] Soumission déjà en cours, ignoré.');
+      return;
+    }
+    // ────────────────────────────────────────────────────────────────────────
     if (!_formKey.currentState!.validate()) return;
     if (_selectedImages.isEmpty && _existingImages.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -227,7 +254,11 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
     final auth = Provider.of<AuthController>(context, listen: false);
     final propertyCtrl = Provider.of<PropertyController>(context, listen: false);
 
-    setState(() => _isSubmitting = true);
+    // Verrou synchrone : affectation directe + setState pour le rebuild UI
+    // L'affectation directe garantit que _isSubmitting est true AVANT tout await,
+    // même si le rebuild Flutter est planifié pour le prochain frame.
+    _isSubmitting = true;
+    setState(() {});
 
     try {
       final List<String> uploadedUrls = await propertyCtrl.compressAndUploadImages(_selectedImages);
@@ -265,6 +296,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
 
       if (uploadedUrls.isEmpty && _selectedImages.isNotEmpty) {
         if (!mounted) return;
+        setState(() => _isSubmitting = false); // Libérer le verrou
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Erreur lors du téléchargement des images. Réessayez.')),
         );
@@ -276,6 +308,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
       
       if (_isAddingOther && quartierFinal.isEmpty) {
         if (!mounted) return;
+        setState(() => _isSubmitting = false); // Libérer le verrou
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Veuillez saisir le nom du quartier')),
         );
@@ -290,8 +323,9 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
         totalSize += img.length;
       }
 
-      if (totalSize > 10000000) { // Limite augmentée à 10 Mo pour Django
+      if (totalSize > 10000000) { // Limite à 10 Mo
         if (!mounted) return;
+        setState(() => _isSubmitting = false); // Libérer le verrou
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Les images sont trop volumineuses (${(totalSize / (1024 * 1024)).toStringAsFixed(1)} Mo). maximum 10 Mo.'),
@@ -346,11 +380,14 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
           rentAdvanceMonths: _selectedTransactionType == 'Location' ? (int.tryParse(_rentAdvanceController.text) ?? 0) : 0,
           securityDepositMonths: _selectedTransactionType == 'Location' ? (int.tryParse(_securityDepositController.text) ?? 0) : 0,
         );
-        success = await propertyCtrl.addProperty(newProperty);
+        success = await propertyCtrl.addProperty(newProperty, idempotencyKey: _submissionToken);
       }
 
       if (success) {
         if (!mounted) return;
+        // Succès : on régénère le token pour qu'une prochaine soumission
+        // (ex: l'utilisateur publie une 2e annonce) ait sa propre clé
+        _submissionToken = _generateToken();
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(widget.propertyToEdit != null ? 'Annonce modifiée !' : 'Annonce publiée !')),
@@ -611,7 +648,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                             decoration: const InputDecoration(labelText: 'Quartier', border: OutlineInputBorder()),
                           ),
                       const SizedBox(height: 16),
-                      if (_selectedCategory == 'Terrains') ...[
+                      const SizedBox(height: 16),
                         const Padding(
                           padding: EdgeInsets.only(left: 4, bottom: 8),
                           child: Text('Type de transaction', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
@@ -652,7 +689,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                           ],
                         ),
                         const SizedBox(height: 16),
-                      ],
+                      const SizedBox(height: 16),
                       TextFormField(
                         controller: _descController,
                         maxLines: 4,

@@ -25,6 +25,18 @@ class AdController extends ChangeNotifier {
     // Écouter les changements de connectivité
     // Quand on passe hors ligne → recharger les pubs depuis le cache SQLite
     ConnectivityService().addListener(_onConnectivityChanged);
+    // Charger le cache immédiatement pour que activeAds soit disponible
+    // dès le premier rendu (mobile + web), sans attendre getActiveAds()
+    _loadCacheImmediately();
+  }
+
+  Future<void> _loadCacheImmediately() async {
+    final cached = await _db.getActiveAds();
+    if (cached.isNotEmpty && _activeAds.isEmpty) {
+      _activeAds = cached;
+      notifyListeners();
+      debugPrint('📦 [AdController] Cache initial chargé: ${cached.length} pub(s)');
+    }
   }
 
   void _onConnectivityChanged() {
@@ -108,13 +120,16 @@ class AdController extends ChangeNotifier {
     }
   }
 
-  /// Ajouter une publicité via Supabase
+  /// Ajouter une publicité via Supabase puis rafraîchir la liste locale
   Future<bool> addAd(AdModel ad) async {
     try {
       _isLoading = true;
       notifyListeners();
 
       await supabaseService.client.from('ads').insert(ad.toMap());
+
+      // Recharger depuis Supabase pour récupérer l'ID généré côté serveur
+      await _refreshFromSupabase();
 
       _isLoading = false;
       notifyListeners();
@@ -127,11 +142,22 @@ class AdController extends ChangeNotifier {
     }
   }
 
-  /// Modifier une publicité via Supabase
+  /// Modifier une publicité via Supabase puis mettre à jour la liste locale
   Future<bool> updateAd(AdModel ad) async {
     if (ad.id == null) return false;
     try {
       await supabaseService.client.from('ads').update(ad.toMap()).eq('id', ad.id!);
+
+      // Mettre à jour l'élément dans la liste en mémoire
+      final idx = _activeAds.indexWhere((a) => a.id == ad.id);
+      if (idx != -1) {
+        _activeAds[idx] = ad;
+        await _db.upsertAd(ad);
+        notifyListeners();
+      } else {
+        // L'ad modifiée n'était pas dans _activeAds (ex: was inactive), recharger
+        await _refreshFromSupabase();
+      }
       return true;
     } catch (e) {
       debugPrint('Erreur mise à jour Ad Supabase: $e');
@@ -139,14 +165,46 @@ class AdController extends ChangeNotifier {
     }
   }
 
-  /// Supprimer une publicité via Supabase
+  /// Supprimer une publicité de Supabase ET de l'état local immédiatement
   Future<bool> deleteAd(String id) async {
     try {
       await supabaseService.client.from('ads').delete().eq('id', id);
+
+      // 1. Retirer de la liste en mémoire → le BannerCarousel se met à jour instantanément
+      _activeAds.removeWhere((ad) => ad.id == id);
+
+      // 2. Supprimer du cache SQLite local
+      await _db.deleteAd(id);
+
+      // 3. Notifier les Consumers (HomeScreen, etc.)
+      notifyListeners();
+      debugPrint('🗑️ [AdController] Ad $id supprimée (mémoire + SQLite + Supabase)');
       return true;
     } catch (e) {
       debugPrint('Erreur suppression Ad Supabase: $e');
       return false;
+    }
+  }
+
+  /// Recharge les ads actives depuis Supabase et met à jour _activeAds + SQLite
+  Future<void> _refreshFromSupabase() async {
+    if (!_connectivity.isOnline) return;
+    try {
+      final List<dynamic> data = await supabaseService.client
+          .from('ads')
+          .select()
+          .eq('is_active', true)
+          .order('priority', ascending: false);
+      final remoteAds = data
+          .map((item) => AdModel.fromMap(item, item['id'].toString()))
+          .toList();
+      await _db.clearAds();
+      for (final ad in remoteAds) {
+        await _db.upsertAd(ad);
+      }
+      _activeAds = remoteAds;
+    } catch (e) {
+      debugPrint('Erreur refresh ads Supabase: $e');
     }
   }
 

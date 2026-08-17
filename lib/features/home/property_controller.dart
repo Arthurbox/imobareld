@@ -135,7 +135,10 @@ class PropertyController extends ChangeNotifier {
     try {
       final res = await supabaseService.client.from('properties').select().limit(1).maybeSingle();
       if (res != null) {
-        _validPropertyColumns = res.keys.toList();
+        // Toujours inclure idempotency_key dans la liste (colonne créée via ALTER TABLE)
+        final keys = res.keys.toList();
+        if (!keys.contains('idempotency_key')) keys.add('idempotency_key');
+        _validPropertyColumns = keys;
         debugPrint('🔍 Schéma détecté: $_validPropertyColumns');
         return _validPropertyColumns!;
       }
@@ -143,17 +146,22 @@ class PropertyController extends ChangeNotifier {
       debugPrint('⚠️ Impossible de détecter le schéma: $e');
     }
     // Fallback sur les colonnes standards complètes
+    // idempotency_key est inclus systématiquement (présent en base depuis ALTER TABLE)
     return [
       'id', 'owner_id', 'title', 'description', 'category', 'price', 'city', 'quartier', 
-      'images', 'pieces', 'latitude', 'longitude', 'likes_count', 'video_urls', 
+      'images', 'pieces', 'latitude', 'longitude', 'likes_count', 'video_url', 
       'is_owner_verified', 'price_duration', 'amenities', 'is_certified', 
       'average_rating', 'review_count', 'transaction_type', 'rent_advance_months', 
-      'security_deposit_months', 'is_boosted', 'boost_expiry_date', 'boost_plan_type'
+      'security_deposit_months', 'is_boosted', 'boost_expiry_date', 'boost_plan_type',
+      'idempotency_key',
     ];
   }
 
   /// Ajouter une propriété via Supabase
-  Future<bool> addProperty(PropertyModel property) async {
+  /// [idempotencyKey] : clé unique générée côté client pour prévenir les doublons.
+  /// Si Supabase retourne une erreur de clé dupliquée (code 23505), on traite
+  /// la réponse comme un succès idempotent — l'annonce existe déjà.
+  Future<bool> addProperty(PropertyModel property, {String? idempotencyKey}) async {
     try {
       _isLoading = true;
       notifyListeners();
@@ -167,23 +175,40 @@ class PropertyController extends ChangeNotifier {
       // Filtrage intelligent
       final Map<String, dynamic> propertyData = property.toFilteredMap(validColumns);
       propertyData.remove('id'); // Supabase génère l'UUID
-      propertyData['owner_id'] = userId; 
+      propertyData['owner_id'] = userId;
 
-      final response = await supabaseService.client.from('properties').insert(propertyData).select().single();
-      final newId = response['id'].toString();
+      // Inclure la clé d'idempotence si la colonne existe dans le schéma
+      if (idempotencyKey != null && validColumns.contains('idempotency_key')) {
+        propertyData['idempotency_key'] = idempotencyKey;
+        debugPrint('🔑 [Idempotence] Token: $idempotencyKey');
+      }
 
       try {
-        await NotificationService().showNewPropertyNotification(
-          propertyId: newId,
-          title: property.title,
-          category: property.category,
-          city: property.city,
-          quartier: property.quartier,
-          price: property.price,
-          imageBase64: property.images.isNotEmpty ? property.images.first : null,
-        );
-      } catch (notifError) {
-        debugPrint('⚠️ Erreur notification: $notifError');
+        final response = await supabaseService.client.from('properties').insert(propertyData).select().single();
+        final newId = response['id'].toString();
+
+        try {
+          await NotificationService().showNewPropertyNotification(
+            propertyId: newId,
+            title: property.title,
+            category: property.category,
+            city: property.city,
+            quartier: property.quartier,
+            price: property.price,
+            imageBase64: property.images.isNotEmpty ? property.images.first : null,
+          );
+        } catch (notifError) {
+          debugPrint('⚠️ Erreur notification: $notifError');
+        }
+      } catch (insertError) {
+        final errStr = insertError.toString();
+        // Code PostgreSQL 23505 = violation de contrainte UNIQUE
+        // → L'annonce a déjà été insérée (retry après échec réseau) : succès idempotent
+        if (errStr.contains('23505') || errStr.contains('duplicate key') || errStr.contains('idempotency_key')) {
+          debugPrint('✅ [Idempotence] Doublon détecté (23505) — soumission ignorée, annonce déjà créée.');
+        } else {
+          rethrow; // Erreur réelle, on la propage
+        }
       }
       
       _isLoading = false;
@@ -194,7 +219,7 @@ class PropertyController extends ChangeNotifier {
       debugPrint('🚨 Erreur ajout propriété Supabase: $e');
       _isLoading = false;
       notifyListeners();
-      return false;
+      throw Exception(e.toString());
     }
   }
 
@@ -225,7 +250,7 @@ class PropertyController extends ChangeNotifier {
       debugPrint('🚨 Erreur mise à jour Supabase: $e');
       _isLoading = false;
       notifyListeners();
-      return false;
+      throw Exception(e.toString());
     }
   }
 
@@ -497,6 +522,55 @@ class PropertyController extends ChangeNotifier {
     }
   }
 
+  /// Flux temps réel des annonces pour une section (Accueil) avec filtrage
+  Stream<List<PropertyModel>> getPropertiesForSectionStream({
+    required String category,
+    String? city,
+    int limit = 20,
+  }) async* {
+    // Mode hors-ligne : émettre immédiatement le cache
+    if (!_connectivity.isOnline) {
+      var cached = await _dbHelper.getPropertiesByCategory(category);
+      if (city != null && city != 'Toutes les villes' && city != 'Toutes') {
+        cached = cached.where((p) => p.city == city).toList();
+      }
+      yield cached.take(limit).toList();
+      return;
+    }
+
+    // Mode en-ligne : Supabase Stream
+    dynamic query = supabaseService.client.from('properties').stream(primaryKey: ['id']);
+    
+    // Filtres complexes via eq ne sont pas tous supportés nativement dans .stream()
+    // Mais on peut écouter la table globale et filtrer en mémoire pour le temps réel.
+    // Pour optimiser, on filtre au niveau Dart après réception.
+    yield* query.order('created_at', ascending: false).map((data) {
+      List<PropertyModel> properties = (data as List)
+          .map((item) => PropertyModel.fromMap(item, item['id'].toString()))
+          .toList();
+
+      // Application des filtres côté client car le stream natif Supabase a des limites de filtrage complexe
+      if (category == 'Appartements') {
+        properties = properties.where((p) => p.category == 'Appartement' || p.category == 'Appartements').toList();
+      } else {
+        properties = properties.where((p) => p.category == category).toList();
+      }
+
+      if (city != null && city != 'Toutes les villes' && city != 'Toutes') {
+        properties = properties.where((p) => p.city == city).toList();
+      }
+
+      final results = properties.take(limit).toList();
+
+      // Mise à jour silencieuse du cache
+      if (results.isNotEmpty) {
+        unawaited(_dbHelper.batchUpsertProperties(results));
+      }
+
+      return results;
+    });
+  }
+
   /// Récupère les propriétés filtrées par ville (Pour Admin) (Future)
   Future<List<PropertyModel>> getPropertiesByCityAdmin(String city) async {
     // Mode hors-ligne : SQLite
@@ -532,6 +606,36 @@ class PropertyController extends ChangeNotifier {
       }
       return cached;
     }
+  }
+
+  /// Flux temps réel des propriétés filtrées par ville (Pour Admin)
+  Stream<List<PropertyModel>> getPropertiesByCityAdminStream(String city) async* {
+    if (!_connectivity.isOnline) {
+      var cached = await _dbHelper.getAllProperties();
+      if (city != 'Toutes les villes' && city != 'Toutes') {
+        cached = cached.where((p) => p.city == city).toList();
+      }
+      yield cached;
+      return;
+    }
+
+    dynamic query = supabaseService.client.from('properties').stream(primaryKey: ['id']);
+    
+    if (city != 'Toutes les villes' && city != 'Toutes') {
+      query = query.eq('city', city);
+    }
+    
+    yield* query.order('created_at', ascending: false).map((data) {
+      final results = (data as List)
+          .map((item) => PropertyModel.fromMap(item, item['id'].toString()))
+          .toList();
+      
+      if (results.isNotEmpty) {
+        unawaited(_dbHelper.batchUpsertProperties(results));
+      }
+      
+      return results;
+    });
   }
 
   /// Récupérer les propriétés d'un propriétaire

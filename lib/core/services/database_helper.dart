@@ -538,6 +538,14 @@ class DatabaseHelper {
     await db.delete('ads');
   }
 
+  /// Supprime une publicité du cache local par son ID
+  Future<void> deleteAd(String id) async {
+    if (kIsWeb) return;
+    final db = await database;
+    if (db == null) return;
+    await db.delete('ads', where: 'id = ?', whereArgs: [id]);
+  }
+
 
   // --- MÉTHODES POUR LES RÉALISATIONS ---
 

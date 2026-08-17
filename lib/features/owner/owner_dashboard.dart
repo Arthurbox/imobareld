@@ -356,28 +356,62 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
   void _confirmDeleteProperty(BuildContext context, PropertyModel property, PropertyController controller) {
     _showDeleteDialog(
       context,
-      onDelete: () async => await controller.deleteProperty(property.id!),
+      onDelete: () => controller.deleteProperty(property.id!),
     );
   }
 
 
-  void _showDeleteDialog(BuildContext context, {required Future<void> Function() onDelete}) {
+  void _showDeleteDialog(BuildContext context, {required Future<bool> Function() onDelete}) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Supprimer l\'annonce ?'),
-        content: const Text('Cette action est irréversible.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              await onDelete();
-            },
-            child: const Text('Supprimer', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        bool isDeleting = false;
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Supprimer l\'annonce ?'),
+              content: isDeleting
+                  ? const SizedBox(
+                      height: 60,
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  : const Text('Cette action est irréversible.'),
+              actions: isDeleting
+                  ? []
+                  : [
+                      TextButton(
+                        onPressed: () => Navigator.pop(dialogContext),
+                        child: const Text('Annuler'),
+                      ),
+                      TextButton(
+                        onPressed: () async {
+                          // Verrou : empêche le double-tap sur "Supprimer"
+                          setDialogState(() => isDeleting = true);
+                          final success = await onDelete();
+                          if (dialogContext.mounted) {
+                            Navigator.pop(dialogContext);
+                          }
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  success
+                                      ? 'Annonce supprimée avec succès.'
+                                      : 'Erreur lors de la suppression. Réessayez.',
+                                ),
+                                backgroundColor: success ? Colors.green[700] : Colors.red,
+                              ),
+                            );
+                          }
+                        },
+                        child: const Text('Supprimer', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+            );
+          },
+        );
+      },
     );
   }
 

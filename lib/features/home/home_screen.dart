@@ -15,6 +15,7 @@ import 'package:imobareld/features/home/add_property_screen.dart';
 import 'package:imobareld/features/home/favorites_screen.dart';
 import 'package:imobareld/features/home/property_controller.dart';
 import 'package:imobareld/models/property_model.dart';
+import 'package:imobareld/models/ad_model.dart';
 import 'package:imobareld/models/comment_model.dart';
 import 'package:imobareld/features/search/search_screen.dart';
 import 'package:imobareld/features/owner/owner_dashboard.dart';
@@ -613,19 +614,21 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 1. CARROUSEL DE PUBLICITÉS
-            // Utilise Consumer<AdController> + activeAds (ChangeNotifier)
-            // Le listener connectivité dans AdController force un notifyListeners()
-            // depuis le cache SQLite dès que la connexion est perdue → pas besoin d'actualiser
-            Consumer<AdController>(
-              builder: (context, adController, _) => BannerCarousel(
-                ads: adController.activeAds,
-                isLoading: adController.isLoading && adController.activeAds.isEmpty,
-                onAdTap: (ad) {
-                  if (ad.targetUrl != null && ad.targetUrl!.isNotEmpty) {
-                    launchUrl(Uri.parse(ad.targetUrl!));
-                  }
-                },
-              ),
+            // Utilise activeAdsStream pour une mise à jour en temps réel absolue.
+            StreamBuilder<List<AdModel>>(
+              stream: Provider.of<AdController>(context, listen: false).activeAdsStream,
+              builder: (context, snapshot) {
+                final ads = snapshot.data ?? Provider.of<AdController>(context, listen: false).activeAds;
+                return BannerCarousel(
+                  ads: ads,
+                  isLoading: snapshot.connectionState == ConnectionState.waiting && ads.isEmpty,
+                  onAdTap: (ad) {
+                    if (ad.targetUrl != null && ad.targetUrl!.isNotEmpty) {
+                      launchUrl(Uri.parse(ad.targetUrl!));
+                    }
+                  },
+                );
+              },
             ),
             const SizedBox(height: 16),
 
